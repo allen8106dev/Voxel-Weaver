@@ -208,7 +208,7 @@ export function VoxelBuilder() {
             value={[sensitivity]}
             onValueChange={handleSensitivityChange}
             min={0.5}
-            max={4}
+            max={5}
             step={0.1}
             className="w-32"
             data-testid="slider-sensitivity"
