@@ -23,7 +23,6 @@ const GRID_SIZE = 1;
 const VOXEL_COLOR = 0x00ffff;
 const INERTIA_DAMPING = 0.95;
 const ZOOM_SPEED = 0.03;
-const ROTATION_SENSITIVITY = 2;
 
 function snapToGrid(value: number): number {
   return Math.round(value / GRID_SIZE) * GRID_SIZE;
@@ -45,6 +44,7 @@ export class VoxelScene {
   private animationId: number | null = null;
   private lastPalmPosition: THREE.Vector3 | null = null;
   private isValid = true;
+  private sensitivity = 1.5;
 
   constructor(container: HTMLElement) {
     this.scene = new THREE.Scene();
@@ -217,10 +217,10 @@ export class VoxelScene {
     if (indexPinch) {
       this.state.isRotating = true;
       if (this.lastPalmPosition) {
-        const deltaX = (palmPosition.x - this.lastPalmPosition.x) * ROTATION_SENSITIVITY;
-        const deltaY = (palmPosition.y - this.lastPalmPosition.y) * ROTATION_SENSITIVITY;
+        const deltaX = (palmPosition.x - this.lastPalmPosition.x) * this.sensitivity;
+        const deltaY = (palmPosition.y - this.lastPalmPosition.y) * this.sensitivity;
         this.state.rotationVelocity.x = deltaX * 10;
-        this.state.rotationVelocity.y = deltaY * 10;
+        this.state.rotationVelocity.y = -deltaY * 10;
       }
       this.lastPalmPosition = palmPosition.clone();
     } else {
@@ -351,6 +351,14 @@ export class VoxelScene {
 
   isLockedState(): boolean {
     return this.state.isLocked;
+  }
+
+  setSensitivity(value: number): void {
+    this.sensitivity = value;
+  }
+
+  getSensitivity(): number {
+    return this.sensitivity;
   }
 
   clearAll(): void {

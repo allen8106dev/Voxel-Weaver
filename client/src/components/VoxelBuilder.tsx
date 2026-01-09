@@ -17,8 +17,10 @@ import {
   Plus,
   Minus,
   ExternalLink,
-  AlertTriangle
+  AlertTriangle,
+  Gauge
 } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
 
 interface GestureDebounce {
   rightIndexPinch: boolean;
@@ -34,6 +36,7 @@ export function VoxelBuilder() {
   const [showInstructions, setShowInstructions] = useState(true);
   const [webglError, setWebglError] = useState<string | null>(null);
   const [cursorStatus, setCursorStatus] = useState({ hasTarget: false, canPlace: false, canDelete: false });
+  const [sensitivity, setSensitivity] = useState(1.5);
   const lastGestureRef = useRef<GestureDebounce>({
     rightIndexPinch: false,
     rightMiddlePinch: false,
@@ -106,6 +109,14 @@ export function VoxelBuilder() {
     if (sceneRef.current) {
       sceneRef.current.clearAll();
       setVoxelCount(1);
+    }
+  };
+
+  const handleSensitivityChange = (value: number[]) => {
+    const newValue = value[0];
+    setSensitivity(newValue);
+    if (sceneRef.current) {
+      sceneRef.current.setSensitivity(newValue);
     }
   };
 
@@ -186,6 +197,24 @@ export function VoxelBuilder() {
             {voxelCount} {voxelCount === 1 ? 'voxel' : 'voxels'}
           </span>
         </div>
+        
+        <div className="space-y-2 pt-2 border-t border-primary/20">
+          <div className="flex items-center gap-2">
+            <Gauge className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Sensitivity</span>
+            <span className="text-xs font-mono text-primary ml-auto">{sensitivity.toFixed(1)}x</span>
+          </div>
+          <Slider
+            value={[sensitivity]}
+            onValueChange={handleSensitivityChange}
+            min={0.5}
+            max={4}
+            step={0.1}
+            className="w-32"
+            data-testid="slider-sensitivity"
+          />
+        </div>
+
         {isLocked && (
           <div className="flex items-center gap-3 text-amber-400">
             <Lock className="w-5 h-5" />
