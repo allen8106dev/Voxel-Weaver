@@ -240,8 +240,8 @@ export class VoxelScene {
 
   updateCursor(palmPosition: THREE.Vector3, ringPinch: boolean): { hasTarget: boolean; canPlace: boolean; canDelete: boolean } {
     const cursorWorldPos = new THREE.Vector3(
-      palmPosition.x * 5,
-      palmPosition.y * 5,
+      palmPosition.x * 12,
+      palmPosition.y * 12,
       5
     );
 
