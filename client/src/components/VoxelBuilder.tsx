@@ -78,11 +78,7 @@ export function VoxelBuilder() {
     }
 
     if (gestures.right) {
-      const status = scene.updateCursor(
-        gestures.right.palmPosition, 
-        gestures.right.ringThumbPinch,
-        gestures.right.pinkyThumbPinch
-      );
+      const status = scene.updateCursor(gestures.right.palmPosition);
       setCursorStatus(status);
 
       if (gestures.right.indexThumbPinch && !lastGesture.rightIndexPinch) {
