@@ -48,6 +48,7 @@ export class VoxelScene {
   private currentVoxelIndex = -1;
   private currentFaceIndex = -1;
   private lastRingPinch = false;
+  private lastPinkyPinch = false;
 
   constructor(container: HTMLElement) {
     this.scene = new THREE.Scene();
@@ -246,7 +247,7 @@ export class VoxelScene {
     }
   }
 
-  updateCursor(palmPosition: THREE.Vector3, ringPinch: boolean): { hasTarget: boolean; canPlace: boolean; canDelete: boolean } {
+  updateCursor(palmPosition: THREE.Vector3, ringPinch: boolean, pinkyPinch: boolean): { hasTarget: boolean; canPlace: boolean; canDelete: boolean } {
     this.cursorMesh.visible = false;
 
     const voxels = Array.from(this.state.voxels.values());
@@ -254,64 +255,33 @@ export class VoxelScene {
       return { hasTarget: false, canPlace: false, canDelete: false };
     }
 
-    // Only update target on a new ring pinch
+    const faceNormals = [
+      new THREE.Vector3(0, 0, 1),
+      new THREE.Vector3(0, 0, -1),
+      new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(0, -1, 0),
+      new THREE.Vector3(1, 0, 0),
+      new THREE.Vector3(-1, 0, 0),
+    ];
+
+    // Thumb+Ring: Cycle through all blocks
     if (ringPinch && !this.lastRingPinch) {
-      const faceNormals = [
-        new THREE.Vector3(0, 0, 1),
-        new THREE.Vector3(0, 0, -1),
-        new THREE.Vector3(0, 1, 0),
-        new THREE.Vector3(0, -1, 0),
-        new THREE.Vector3(1, 0, 0),
-        new THREE.Vector3(-1, 0, 0),
-      ];
+      this.currentVoxelIndex = (this.currentVoxelIndex + 1) % voxels.length;
+      if (this.currentVoxelIndex < 0) this.currentVoxelIndex = 0;
+      this.currentFaceIndex = 0; // Reset face when changing block
+      this.updateTargetSelection(voxels, faceNormals);
+    }
 
-      const cameraDirection = new THREE.Vector3();
-      this.camera.getWorldDirection(cameraDirection);
-      const groupQuaternion = new THREE.Quaternion().setFromEuler(this.state.worldRotation);
-      const localViewDirection = cameraDirection.clone().applyQuaternion(groupQuaternion.clone().invert());
-
-      let found = false;
-      let iterations = 0;
-      const totalPossible = voxels.length * faceNormals.length;
-
-      while (!found && iterations < totalPossible) {
-        // Cycle face first, then voxel
-        this.currentFaceIndex++;
-        if (this.currentFaceIndex >= faceNormals.length) {
-          this.currentFaceIndex = 0;
-          this.currentVoxelIndex = (this.currentVoxelIndex + 1) % voxels.length;
-        }
-        if (this.currentVoxelIndex === -1) this.currentVoxelIndex = 0;
-
-        const voxel = voxels[this.currentVoxelIndex];
-        const normal = faceNormals[this.currentFaceIndex];
-
-        // Only select faces pointing towards user
-        if (normal.dot(localViewDirection) < 0) {
-          this.state.targetVoxelId = voxel.id;
-          this.state.targetFace = normal;
-          
-          const faceCenter = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE * 0.5));
-          const newPos = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE));
-          this.state.targetPosition = new THREE.Vector3(
-            snapToGrid(newPos.x),
-            snapToGrid(newPos.y),
-            snapToGrid(newPos.z)
-          );
-
-          this.highlightMesh.position.copy(faceCenter);
-          this.highlightMesh.lookAt(faceCenter.clone().add(normal));
-          this.highlightMesh.position.add(normal.clone().multiplyScalar(0.01));
-          this.highlightMesh.visible = true;
-          
-          this.highlightVoxel(voxel.id);
-          found = true;
-        }
-        iterations++;
-      }
+    // Thumb+Pinky: Cycle through all 6 planes of selected cube
+    if (pinkyPinch && !this.lastPinkyPinch) {
+      if (this.currentVoxelIndex < 0) this.currentVoxelIndex = 0;
+      this.currentFaceIndex = (this.currentFaceIndex + 1) % faceNormals.length;
+      if (this.currentFaceIndex < 0) this.currentFaceIndex = 0;
+      this.updateTargetSelection(voxels, faceNormals);
     }
 
     this.lastRingPinch = ringPinch;
+    this.lastPinkyPinch = pinkyPinch;
 
     if (this.state.targetVoxelId) {
       const canPlace = !this.state.voxels.has(positionToKey(this.state.targetPosition!));
@@ -319,6 +289,32 @@ export class VoxelScene {
     }
     
     return { hasTarget: false, canPlace: false, canDelete: false };
+  }
+
+  private updateTargetSelection(voxels: Voxel[], faceNormals: THREE.Vector3[]) {
+    if (this.currentVoxelIndex < 0 || this.currentVoxelIndex >= voxels.length) return;
+    
+    const voxel = voxels[this.currentVoxelIndex];
+    if (this.currentFaceIndex < 0 || this.currentFaceIndex >= faceNormals.length) this.currentFaceIndex = 0;
+    const normal = faceNormals[this.currentFaceIndex];
+
+    this.state.targetVoxelId = voxel.id;
+    this.state.targetFace = normal;
+    
+    const faceCenter = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE * 0.5));
+    const newPos = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE));
+    this.state.targetPosition = new THREE.Vector3(
+      snapToGrid(newPos.x),
+      snapToGrid(newPos.y),
+      snapToGrid(newPos.z)
+    );
+
+    this.highlightMesh.position.copy(faceCenter);
+    this.highlightMesh.lookAt(faceCenter.clone().add(normal));
+    this.highlightMesh.position.add(normal.clone().multiplyScalar(0.01));
+    this.highlightMesh.visible = true;
+    
+    this.highlightVoxel(voxel.id);
   }
 
   private highlightVoxel(id: string): void {
