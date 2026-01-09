@@ -38,7 +38,7 @@ export class VoxelScene {
   private renderer: THREE.WebGLRenderer;
   private state: VoxelSceneState;
   private worldGroup: THREE.Group;
-  private cursorMesh: THREE.Mesh;
+  private cursorMesh: THREE.LineSegments;
   private highlightMesh: THREE.Mesh;
   private raycaster: THREE.Raycaster;
   private animationId: number | null = null;
@@ -90,26 +90,29 @@ export class VoxelScene {
     this.scene.add(backLight);
 
     // Small crosshair cursor
-    const crosshairSize = 0.05;
+    const crosshairSize = 0.15;
     const cursorGeometry = new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(-crosshairSize, 0, 0), new THREE.Vector3(crosshairSize, 0, 0),
       new THREE.Vector3(0, -crosshairSize, 0), new THREE.Vector3(0, crosshairSize, 0),
-      new THREE.Vector3(0, 0, -crosshairSize), new THREE.Vector3(0, 0, crosshairSize)
     ]);
     const cursorMaterial = new THREE.LineBasicMaterial({
       color: 0xff00ff,
       linewidth: 2,
+      transparent: true,
+      opacity: 0.9,
     });
-    this.cursorMesh = new THREE.LineSegments(cursorGeometry, cursorMaterial) as any;
+    this.cursorMesh = new THREE.LineSegments(cursorGeometry, cursorMaterial);
     this.cursorMesh.visible = false;
     this.scene.add(this.cursorMesh);
 
-    const highlightGeometry = new THREE.BoxGeometry(GRID_SIZE * 1.01, GRID_SIZE * 1.01, GRID_SIZE * 1.01);
+    // Face highlight mesh
+    const highlightGeometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE);
     const highlightMaterial = new THREE.MeshBasicMaterial({
       color: 0x00ff00,
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.5,
       side: THREE.DoubleSide,
+      depthWrite: false,
     });
     this.highlightMesh = new THREE.Mesh(highlightGeometry, highlightMaterial);
     this.highlightMesh.visible = false;
@@ -260,9 +263,6 @@ export class VoxelScene {
     let closestFaceCenter: THREE.Vector3 | null = null;
     let closestDistance = Infinity;
 
-    const inverseRotation = new THREE.Quaternion().setFromEuler(this.state.worldRotation).invert();
-    const cursorInWorldSpace = cursorWorldPos.clone().applyQuaternion(inverseRotation);
-
     const faceNormals = [
       new THREE.Vector3(0, 0, 1),
       new THREE.Vector3(0, 0, -1),
@@ -289,7 +289,7 @@ export class VoxelScene {
       }
     }
 
-    const LATCH_DISTANCE = 2; // Reduced latch distance for better control
+    const LATCH_DISTANCE = 2;
 
     if (closestVoxel && closestFaceNormal && closestFaceCenter && closestDistance < LATCH_DISTANCE) {
       this.state.targetVoxelId = closestVoxel.id;
@@ -302,13 +302,16 @@ export class VoxelScene {
         snapToGrid(newPos.z)
       );
 
-      this.highlightMesh.position.copy(closestVoxel.position);
+      // Highlight only the specific face
+      this.highlightMesh.position.copy(closestFaceCenter);
+      this.highlightMesh.lookAt(closestFaceCenter.clone().add(closestFaceNormal));
+      this.highlightMesh.position.add(closestFaceNormal.clone().multiplyScalar(0.01)); // Offset to prevent z-fighting
       this.highlightMesh.visible = true;
 
-      this.cursorMesh.position.copy(closestFaceCenter.clone().applyEuler(this.state.worldRotation));
-      this.cursorMesh.position.z += this.state.zoom;
-
-      this.highlightVoxel(closestVoxel.id);
+      // Position crosshair exactly on the face center from camera perspective
+      const cursorScreenPos = closestFaceCenter.clone().applyEuler(this.state.worldRotation);
+      cursorScreenPos.z += this.state.zoom;
+      this.cursorMesh.position.copy(cursorScreenPos);
       
       const canPlace = !this.state.voxels.has(positionToKey(this.state.targetPosition));
       return { hasTarget: true, canPlace, canDelete: true };
@@ -318,7 +321,6 @@ export class VoxelScene {
     this.state.targetPosition = null;
     this.state.targetFace = null;
     this.highlightMesh.visible = false;
-    this.clearHighlights();
     
     return { hasTarget: false, canPlace: false, canDelete: false };
   }
@@ -329,25 +331,6 @@ export class VoxelScene {
     this.state.targetVoxelId = null;
     this.state.targetPosition = null;
     this.state.targetFace = null;
-    this.clearHighlights();
-  }
-
-  private highlightVoxel(id: string): void {
-    this.state.voxels.forEach((voxel, voxelId) => {
-      const material = voxel.mesh.material as THREE.MeshStandardMaterial;
-      if (voxelId === id) {
-        material.emissiveIntensity = 0.4;
-      } else {
-        material.emissiveIntensity = 0.1;
-      }
-    });
-  }
-
-  private clearHighlights(): void {
-    this.state.voxels.forEach((voxel) => {
-      const material = voxel.mesh.material as THREE.MeshStandardMaterial;
-      material.emissiveIntensity = 0.1;
-    });
   }
 
   placeCube(): boolean {
