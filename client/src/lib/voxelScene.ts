@@ -45,7 +45,8 @@ export class VoxelScene {
   private lastPalmPosition: THREE.Vector3 | null = null;
   private isValid = true;
   private sensitivity = 1.5;
-  private currentTargetIndex = -1;
+  private currentVoxelIndex = -1;
+  private currentFaceIndex = -1;
   private lastRingPinch = false;
 
   constructor(container: HTMLElement) {
@@ -246,7 +247,7 @@ export class VoxelScene {
   }
 
   updateCursor(palmPosition: THREE.Vector3, ringPinch: boolean): { hasTarget: boolean; canPlace: boolean; canDelete: boolean } {
-    this.cursorMesh.visible = false; // Always hidden now
+    this.cursorMesh.visible = false;
 
     const voxels = Array.from(this.state.voxels.values());
     if (voxels.length === 0) {
@@ -255,13 +256,6 @@ export class VoxelScene {
 
     // Only update target on a new ring pinch
     if (ringPinch && !this.lastRingPinch) {
-      const candidates: Array<{
-        voxel: Voxel;
-        normal: THREE.Vector3;
-        center: THREE.Vector3;
-        distance: number;
-      }> = [];
-
       const faceNormals = [
         new THREE.Vector3(0, 0, 1),
         new THREE.Vector3(0, 0, -1),
@@ -276,48 +270,44 @@ export class VoxelScene {
       const groupQuaternion = new THREE.Quaternion().setFromEuler(this.state.worldRotation);
       const localViewDirection = cameraDirection.clone().applyQuaternion(groupQuaternion.clone().invert());
 
-      for (const voxel of voxels) {
-        for (const normal of faceNormals) {
-          if (normal.dot(localViewDirection) >= 0) continue;
+      let found = false;
+      let iterations = 0;
+      const totalPossible = voxels.length * faceNormals.length;
 
-          const faceCenter = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE * 0.5));
-          const rotatedFaceCenter = faceCenter.clone().applyEuler(this.state.worldRotation);
-          rotatedFaceCenter.z += this.state.zoom;
-          
-          // Use a fixed screen-space "center" or palm position? 
-          // User said "select block surface closest to user", implying cycling through visible surfaces.
-          // Let's sort by distance to camera (z-depth in screen space).
-          candidates.push({
-            voxel,
-            normal: normal.clone(),
-            center: faceCenter.clone(),
-            distance: rotatedFaceCenter.z
-          });
+      while (!found && iterations < totalPossible) {
+        // Cycle face first, then voxel
+        this.currentFaceIndex++;
+        if (this.currentFaceIndex >= faceNormals.length) {
+          this.currentFaceIndex = 0;
+          this.currentVoxelIndex = (this.currentVoxelIndex + 1) % voxels.length;
         }
-      }
+        if (this.currentVoxelIndex === -1) this.currentVoxelIndex = 0;
 
-      if (candidates.length > 0) {
-        // Sort by distance (closest to user/camera)
-        candidates.sort((a, b) => a.distance - b.distance);
+        const voxel = voxels[this.currentVoxelIndex];
+        const normal = faceNormals[this.currentFaceIndex];
 
-        // Cycle through candidates
-        this.currentTargetIndex = (this.currentTargetIndex + 1) % candidates.length;
-        const selected = candidates[this.currentTargetIndex];
+        // Only select faces pointing towards user
+        if (normal.dot(localViewDirection) < 0) {
+          this.state.targetVoxelId = voxel.id;
+          this.state.targetFace = normal;
+          
+          const faceCenter = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE * 0.5));
+          const newPos = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE));
+          this.state.targetPosition = new THREE.Vector3(
+            snapToGrid(newPos.x),
+            snapToGrid(newPos.y),
+            snapToGrid(newPos.z)
+          );
 
-        this.state.targetVoxelId = selected.voxel.id;
-        this.state.targetFace = selected.normal;
-        
-        const newPos = selected.voxel.position.clone().add(selected.normal.clone().multiplyScalar(GRID_SIZE));
-        this.state.targetPosition = new THREE.Vector3(
-          snapToGrid(newPos.x),
-          snapToGrid(newPos.y),
-          snapToGrid(newPos.z)
-        );
-
-        this.highlightMesh.position.copy(selected.center);
-        this.highlightMesh.lookAt(selected.center.clone().add(selected.normal));
-        this.highlightMesh.position.add(selected.normal.clone().multiplyScalar(0.01));
-        this.highlightMesh.visible = true;
+          this.highlightMesh.position.copy(faceCenter);
+          this.highlightMesh.lookAt(faceCenter.clone().add(normal));
+          this.highlightMesh.position.add(normal.clone().multiplyScalar(0.01));
+          this.highlightMesh.visible = true;
+          
+          this.highlightVoxel(voxel.id);
+          found = true;
+        }
+        iterations++;
       }
     }
 
@@ -329,6 +319,19 @@ export class VoxelScene {
     }
     
     return { hasTarget: false, canPlace: false, canDelete: false };
+  }
+
+  private highlightVoxel(id: string): void {
+    this.state.voxels.forEach((voxel, voxelId) => {
+      const material = voxel.mesh.material as THREE.MeshStandardMaterial;
+      if (voxelId === id) {
+        material.emissiveIntensity = 0.5;
+        material.emissive.set(0x00ff00);
+      } else {
+        material.emissiveIntensity = 0.1;
+        material.emissive.set(VOXEL_COLOR);
+      }
+    });
   }
 
   hideCursor(): void {
