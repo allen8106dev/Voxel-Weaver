@@ -158,7 +158,7 @@ export class VoxelScene {
     const key = positionToKey(position);
     if (this.state.voxels.has(key)) return null;
 
-    const geometry = new THREE.BoxGeometry(GRID_SIZE * 0.95, GRID_SIZE * 0.95, GRID_SIZE * 0.95);
+    const geometry = new THREE.BoxGeometry(GRID_SIZE, GRID_SIZE, GRID_SIZE);
     const material = new THREE.MeshStandardMaterial({
       color: VOXEL_COLOR,
       metalness: 0.3,
@@ -313,9 +313,10 @@ export class VoxelScene {
       snapToGrid(newPos.z)
     );
 
+    // Highlight only the specific face
     this.highlightMesh.position.copy(faceCenter);
     this.highlightMesh.lookAt(faceCenter.clone().add(normal));
-    this.highlightMesh.position.add(normal.clone().multiplyScalar(0.01));
+    this.highlightMesh.position.add(normal.clone().multiplyScalar(0.001)); // Minimal offset
     this.highlightMesh.visible = true;
     
     this.highlightVoxel(voxel.id);
