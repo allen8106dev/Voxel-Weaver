@@ -275,6 +275,9 @@ export function VoxelBuilder() {
                 <p className="font-semibold text-sm text-secondary">Right Hand - Build</p>
                 <ul className="text-xs text-muted-foreground space-y-1 mt-1">
                   <li className="flex items-center gap-2">
+                    <Hand className="w-3 h-3" /> Move Hand → Highlight Block
+                  </li>
+                  <li className="flex items-center gap-2">
                     <Hand className="w-3 h-3" /> Thumb + Ring → Cycle surface (unconnected only)
                   </li>
                   <li className="flex items-center gap-2">

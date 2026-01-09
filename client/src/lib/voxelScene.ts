@@ -239,20 +239,42 @@ export class VoxelScene {
   }
 
   updateCursor(palmPosition: THREE.Vector3, ringPinch: boolean): { hasTarget: boolean; canPlace: boolean; canDelete: boolean } {
+    const cursorWorldPos = new THREE.Vector3(
+      palmPosition.x * 5,
+      palmPosition.y * 5,
+      5
+    );
+
     const voxels = Array.from(this.state.voxels.values());
     if (voxels.length === 0) {
       return { hasTarget: false, canPlace: false, canDelete: false };
     }
 
-    // Thumb+Ring: Cycle through all blocks
-    if (ringPinch && !this.lastRingPinch) {
-      this.currentVoxelIndex = (this.currentVoxelIndex + 1) % voxels.length;
-      if (this.currentVoxelIndex < 0) this.currentVoxelIndex = 0;
+    // --- Block Selection (via hand movement) ---
+    let closestVoxel: Voxel | null = null;
+    let closestDistance = Infinity;
+
+    for (const voxel of voxels) {
+      const faceInWorldSpace = voxel.position.clone().applyEuler(this.state.worldRotation);
+      const faceZ = faceInWorldSpace.z + this.state.zoom;
+      const screenDistance = new THREE.Vector2(cursorWorldPos.x - faceInWorldSpace.x, cursorWorldPos.y - faceInWorldSpace.y).length();
       
-      const voxel = voxels[this.currentVoxelIndex];
-      this.state.targetVoxelId = voxel.id;
+      // Score: prioritizing front-facing blocks close to hand position
+      const score = screenDistance + (faceZ * 0.5);
       
-      // Find unconnected faces
+      if (score < closestDistance) {
+        closestDistance = score;
+        closestVoxel = voxel;
+      }
+    }
+
+    if (closestVoxel) {
+      // If we switched to a different voxel, reset the surface index to a reasonable default (front-facing)
+      if (this.state.targetVoxelId !== closestVoxel.id) {
+        this.state.targetVoxelId = closestVoxel.id;
+        this.currentFaceIndex = 4; // Default to 'Front' face (index 4)
+      }
+
       const faceNormals = [
         new THREE.Vector3(1, 0, 0),  // 0: Right
         new THREE.Vector3(-1, 0, 0), // 1: Left
@@ -262,39 +284,44 @@ export class VoxelScene {
         new THREE.Vector3(0, 0, -1), // 5: Back
       ];
 
-      const unconnectedFaces: number[] = [];
-      faceNormals.forEach((normal, index) => {
-        const neighborPos = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE));
-        if (!this.state.voxels.has(positionToKey(neighborPos))) {
-          unconnectedFaces.push(index);
+      // --- Surface Cycling (via Thumb+Ring Pinch) ---
+      if (ringPinch && !this.lastRingPinch) {
+        const unconnectedFaces: number[] = [];
+        faceNormals.forEach((normal, index) => {
+          const neighborPos = closestVoxel!.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE));
+          if (!this.state.voxels.has(positionToKey(neighborPos))) {
+            unconnectedFaces.push(index);
+          }
+        });
+
+        if (unconnectedFaces.length > 0) {
+          const currentIndex = unconnectedFaces.indexOf(this.currentFaceIndex);
+          const nextIndex = (currentIndex + 1) % unconnectedFaces.length;
+          this.currentFaceIndex = unconnectedFaces[nextIndex];
         }
-      });
-
-      if (unconnectedFaces.length > 0) {
-        // Cycle through unconnected faces
-        const currentFaceInUnconnected = unconnectedFaces.indexOf(this.currentFaceIndex);
-        const nextFaceInUnconnected = (currentFaceInUnconnected + 1) % unconnectedFaces.length;
-        this.currentFaceIndex = unconnectedFaces[nextFaceInUnconnected];
-        
-        const normal = faceNormals[this.currentFaceIndex];
-        this.state.targetFace = normal;
-        const newPos = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE));
-        this.state.targetPosition = new THREE.Vector3(
-          snapToGrid(newPos.x),
-          snapToGrid(newPos.y),
-          snapToGrid(newPos.z)
-        );
-
-        this.highlightVoxelFace(voxel, this.currentFaceIndex);
       }
+
+      const normal = faceNormals[this.currentFaceIndex];
+      this.state.targetFace = normal;
+      const newPos = closestVoxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE));
+      this.state.targetPosition = new THREE.Vector3(
+        snapToGrid(newPos.x),
+        snapToGrid(newPos.y),
+        snapToGrid(newPos.z)
+      );
+
+      this.highlightVoxelFace(closestVoxel, this.currentFaceIndex);
+      this.lastRingPinch = ringPinch;
+      
+      const canPlace = !this.state.voxels.has(positionToKey(this.state.targetPosition));
+      return { hasTarget: true, canPlace, canDelete: true };
     }
 
     this.lastRingPinch = ringPinch;
-
-    if (this.state.targetVoxelId) {
-      const canPlace = !this.state.voxels.has(positionToKey(this.state.targetPosition!));
-      return { hasTarget: true, canPlace, canDelete: true };
-    }
+    this.state.targetVoxelId = null;
+    this.state.targetPosition = null;
+    this.state.targetFace = null;
+    this.clearAllHighlights();
     
     return { hasTarget: false, canPlace: false, canDelete: false };
   }
