@@ -120,7 +120,10 @@ export function VoxelBuilder() {
     const newValue = value[0];
     setSensitivity(newValue);
     if (sceneRef.current) {
-      sceneRef.current.setSensitivity(newValue);
+      // Map 1-10 range to actual sensitivity values
+      // 5x is the "normal" (old 10x), so divide by 2 or use a multiplier
+      // If user wants 5x to be old 10x, and max 10x to be even faster
+      sceneRef.current.setSensitivity(newValue * 2);
     }
   };
 
@@ -211,7 +214,7 @@ export function VoxelBuilder() {
           <Slider
             value={[sensitivity]}
             onValueChange={handleSensitivityChange}
-            min={0.5}
+            min={1}
             max={10}
             step={0.1}
             className="w-32"
