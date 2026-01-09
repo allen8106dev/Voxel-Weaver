@@ -78,7 +78,10 @@ export function VoxelBuilder() {
     }
 
     if (gestures.right) {
-      const status = scene.updateCursor(gestures.right.palmPosition);
+      const status = scene.updateCursor(
+        gestures.right.palmPosition,
+        gestures.right.ringThumbPinch
+      );
       setCursorStatus(status);
 
       if (gestures.right.indexThumbPinch && !lastGesture.rightIndexPinch) {
@@ -272,10 +275,7 @@ export function VoxelBuilder() {
                 <p className="font-semibold text-sm text-secondary">Right Hand - Build</p>
                 <ul className="text-xs text-muted-foreground space-y-1 mt-1">
                   <li className="flex items-center gap-2">
-                    <Hand className="w-3 h-3" /> Thumb + Ring → Cycle blocks
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Hand className="w-3 h-3" /> Thumb + Pinky → Cycle block surfaces
+                    <Hand className="w-3 h-3" /> Thumb + Ring → Cycle surface (unconnected only)
                   </li>
                   <li className="flex items-center gap-2">
                     <Plus className="w-3 h-3 text-green-400" /> Thumb + Index → Place cube

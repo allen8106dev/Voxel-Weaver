@@ -107,7 +107,7 @@ export class VoxelScene {
     });
     this.cursorMesh = new THREE.LineSegments(cursorGeometry, cursorMaterial);
     this.cursorMesh.visible = false;
-    this.scene.add(this.cursorMesh);
+    // this.scene.add(this.cursorMesh); // Removed visual cursor mesh
 
     this.raycaster = new THREE.Raycaster();
 
@@ -238,82 +238,63 @@ export class VoxelScene {
     }
   }
 
-  updateCursor(palmPosition: THREE.Vector3): { hasTarget: boolean; canPlace: boolean; canDelete: boolean } {
-    const cursorWorldPos = new THREE.Vector3(
-      palmPosition.x * 5,
-      palmPosition.y * 5,
-      5
-    );
-    
-    this.cursorMesh.position.copy(cursorWorldPos);
-    this.cursorMesh.visible = true;
-
+  updateCursor(palmPosition: THREE.Vector3, ringPinch: boolean): { hasTarget: boolean; canPlace: boolean; canDelete: boolean } {
     const voxels = Array.from(this.state.voxels.values());
     if (voxels.length === 0) {
       return { hasTarget: false, canPlace: false, canDelete: false };
     }
 
-    let closestVoxel: Voxel | null = null;
-    let closestFaceIndex = -1;
-    let closestDistance = Infinity;
+    // Thumb+Ring: Cycle through all blocks
+    if (ringPinch && !this.lastRingPinch) {
+      this.currentVoxelIndex = (this.currentVoxelIndex + 1) % voxels.length;
+      if (this.currentVoxelIndex < 0) this.currentVoxelIndex = 0;
+      
+      const voxel = voxels[this.currentVoxelIndex];
+      this.state.targetVoxelId = voxel.id;
+      
+      // Find unconnected faces
+      const faceNormals = [
+        new THREE.Vector3(1, 0, 0),  // 0: Right
+        new THREE.Vector3(-1, 0, 0), // 1: Left
+        new THREE.Vector3(0, 1, 0),  // 2: Top
+        new THREE.Vector3(0, -1, 0), // 3: Bottom
+        new THREE.Vector3(0, 0, 1),  // 4: Front
+        new THREE.Vector3(0, 0, -1), // 5: Back
+      ];
 
-    const faceNormals = [
-      new THREE.Vector3(1, 0, 0),  // 0: Right
-      new THREE.Vector3(-1, 0, 0), // 1: Left
-      new THREE.Vector3(0, 1, 0),  // 2: Top
-      new THREE.Vector3(0, -1, 0), // 3: Bottom
-      new THREE.Vector3(0, 0, 1),  // 4: Front
-      new THREE.Vector3(0, 0, -1), // 5: Back
-    ];
-
-    for (const voxel of voxels) {
-      for (let i = 0; i < faceNormals.length; i++) {
-        const normal = faceNormals[i];
-        const faceCenter = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE * 0.5));
-        
-        // Calculate the center in camera-relative space (where Z is distance from camera)
-        const faceInWorldSpace = faceCenter.clone().applyEuler(this.state.worldRotation);
-        // Add zoom to get camera-relative Z
-        const faceZ = faceInWorldSpace.z + this.state.zoom;
-        
-        // Horizontal/Vertical distance on the screen/plane relative to the hand
-        const screenDistance = new THREE.Vector2(cursorWorldPos.x - faceInWorldSpace.x, cursorWorldPos.y - faceInWorldSpace.y).length();
-        
-        // We prioritize surfaces that are "closest to front" (smaller faceZ) 
-        // while still being close to the hand's projected position (screenDistance)
-        // Score: lower is better. We weight screen proximity and depth.
-        const score = screenDistance + (faceZ * 0.5);
-        
-        if (score < closestDistance) {
-          closestDistance = score;
-          closestVoxel = voxel;
-          closestFaceIndex = i;
+      const unconnectedFaces: number[] = [];
+      faceNormals.forEach((normal, index) => {
+        const neighborPos = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE));
+        if (!this.state.voxels.has(positionToKey(neighborPos))) {
+          unconnectedFaces.push(index);
         }
+      });
+
+      if (unconnectedFaces.length > 0) {
+        // Cycle through unconnected faces
+        const currentFaceInUnconnected = unconnectedFaces.indexOf(this.currentFaceIndex);
+        const nextFaceInUnconnected = (currentFaceInUnconnected + 1) % unconnectedFaces.length;
+        this.currentFaceIndex = unconnectedFaces[nextFaceInUnconnected];
+        
+        const normal = faceNormals[this.currentFaceIndex];
+        this.state.targetFace = normal;
+        const newPos = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE));
+        this.state.targetPosition = new THREE.Vector3(
+          snapToGrid(newPos.x),
+          snapToGrid(newPos.y),
+          snapToGrid(newPos.z)
+        );
+
+        this.highlightVoxelFace(voxel, this.currentFaceIndex);
       }
     }
 
-    if (closestVoxel && closestFaceIndex !== -1) {
-      const normal = faceNormals[closestFaceIndex];
-      this.state.targetVoxelId = closestVoxel.id;
-      this.state.targetFace = normal;
-      
-      const newPos = closestVoxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE));
-      this.state.targetPosition = new THREE.Vector3(
-        snapToGrid(newPos.x),
-        snapToGrid(newPos.y),
-        snapToGrid(newPos.z)
-      );
+    this.lastRingPinch = ringPinch;
 
-      this.highlightVoxelFace(closestVoxel, closestFaceIndex);
-      
-      const canPlace = !this.state.voxels.has(positionToKey(this.state.targetPosition));
+    if (this.state.targetVoxelId) {
+      const canPlace = !this.state.voxels.has(positionToKey(this.state.targetPosition!));
       return { hasTarget: true, canPlace, canDelete: true };
     }
-
-    this.state.targetVoxelId = null;
-    this.state.targetPosition = null;
-    this.state.targetFace = null;
-    this.clearAllHighlights();
     
     return { hasTarget: false, canPlace: false, canDelete: false };
   }
