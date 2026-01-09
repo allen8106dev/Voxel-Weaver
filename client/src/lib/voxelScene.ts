@@ -111,7 +111,7 @@ export class VoxelScene {
       color: 0x00ff00,
       transparent: true,
       opacity: 0.5,
-      side: THREE.DoubleSide,
+      side: THREE.FrontSide, // Only highlight front-facing surface
       depthWrite: false,
     });
     this.highlightMesh = new THREE.Mesh(highlightGeometry, highlightMaterial);
@@ -272,8 +272,18 @@ export class VoxelScene {
       new THREE.Vector3(-1, 0, 0),
     ];
 
+    // Camera view direction in world space
+    const cameraDirection = new THREE.Vector3();
+    this.camera.getWorldDirection(cameraDirection);
+    // Transform camera direction to local group space to compare with normals
+    const groupQuaternion = new THREE.Quaternion().setFromEuler(this.state.worldRotation);
+    const localViewDirection = cameraDirection.clone().applyQuaternion(groupQuaternion.clone().invert());
+
     for (const voxel of voxels) {
       for (const normal of faceNormals) {
+        // Only consider faces pointing towards the camera (dot product < 0)
+        if (normal.dot(localViewDirection) >= 0) continue;
+
         const faceCenter = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE * 0.5));
         const rotatedFaceCenter = faceCenter.clone().applyEuler(this.state.worldRotation);
         rotatedFaceCenter.z += this.state.zoom;
@@ -308,10 +318,9 @@ export class VoxelScene {
       this.highlightMesh.position.add(closestFaceNormal.clone().multiplyScalar(0.01)); // Offset to prevent z-fighting
       this.highlightMesh.visible = true;
 
-      // Position crosshair exactly on the face center from camera perspective
-      const cursorScreenPos = closestFaceCenter.clone().applyEuler(this.state.worldRotation);
-      cursorScreenPos.z += this.state.zoom;
-      this.cursorMesh.position.copy(cursorScreenPos);
+      // Position crosshair on a fixed plane relative to the camera to keep size constant
+      this.cursorMesh.position.copy(cursorWorldPos);
+      this.cursorMesh.visible = true;
       
       const canPlace = !this.state.voxels.has(positionToKey(this.state.targetPosition));
       return { hasTarget: true, canPlace, canDelete: true };
