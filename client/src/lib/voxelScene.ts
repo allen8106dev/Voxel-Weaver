@@ -21,6 +21,7 @@ export interface VoxelSceneState {
 
 const GRID_SIZE = 1;
 const VOXEL_COLOR = 0x00ffff;
+const HIGHLIGHT_COLOR = 0xff0000;
 const INERTIA_DAMPING = 0.95;
 const ZOOM_SPEED = 0.03;
 
@@ -39,7 +40,6 @@ export class VoxelScene {
   private state: VoxelSceneState;
   private worldGroup: THREE.Group;
   private cursorMesh: THREE.LineSegments;
-  private highlightMesh: THREE.Mesh;
   private raycaster: THREE.Raycaster;
   private animationId: number | null = null;
   private lastPalmPosition: THREE.Vector3 | null = null;
@@ -109,23 +109,6 @@ export class VoxelScene {
     this.cursorMesh.visible = false;
     this.scene.add(this.cursorMesh);
 
-    // Face highlight mesh
-    const highlightGeometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE);
-    const highlightMaterial = new THREE.MeshBasicMaterial({
-      color: 0xff0000,
-      transparent: true,
-      opacity: 0.6,
-      side: THREE.DoubleSide,
-      depthTest: true,
-      depthWrite: false,
-      polygonOffset: true,
-      polygonOffsetFactor: -4,
-      polygonOffsetUnits: -4,
-    });
-    this.highlightMesh = new THREE.Mesh(highlightGeometry, highlightMaterial);
-    this.highlightMesh.visible = false;
-    this.worldGroup.add(this.highlightMesh);
-
     this.raycaster = new THREE.Raycaster();
 
     this.state = {
@@ -149,6 +132,16 @@ export class VoxelScene {
     this.animate();
   }
 
+  private createVoxelMaterials(): THREE.MeshStandardMaterial[] {
+    return Array.from({ length: 6 }, () => new THREE.MeshStandardMaterial({
+      color: VOXEL_COLOR,
+      metalness: 0.3,
+      roughness: 0.4,
+      emissive: VOXEL_COLOR,
+      emissiveIntensity: 0.1,
+    }));
+  }
+
   private placeInitialCube(): void {
     const pos = new THREE.Vector3(0, 0, 0);
     this.addVoxelAt(pos);
@@ -159,15 +152,9 @@ export class VoxelScene {
     if (this.state.voxels.has(key)) return null;
 
     const geometry = new THREE.BoxGeometry(GRID_SIZE, GRID_SIZE, GRID_SIZE);
-    const material = new THREE.MeshStandardMaterial({
-      color: VOXEL_COLOR,
-      metalness: 0.3,
-      roughness: 0.4,
-      emissive: VOXEL_COLOR,
-      emissiveIntensity: 0.1,
-    });
+    const materials = this.createVoxelMaterials();
 
-    const mesh = new THREE.Mesh(geometry, material);
+    const mesh = new THREE.Mesh(geometry, materials);
     mesh.position.copy(position);
     this.worldGroup.add(mesh);
 
@@ -260,12 +247,12 @@ export class VoxelScene {
     }
 
     const faceNormals = [
-      new THREE.Vector3(0, 0, 1),
-      new THREE.Vector3(0, 0, -1),
-      new THREE.Vector3(0, 1, 0),
-      new THREE.Vector3(0, -1, 0),
-      new THREE.Vector3(1, 0, 0),
-      new THREE.Vector3(-1, 0, 0),
+      new THREE.Vector3(1, 0, 0),  // 0: Right
+      new THREE.Vector3(-1, 0, 0), // 1: Left
+      new THREE.Vector3(0, 1, 0),  // 2: Top
+      new THREE.Vector3(0, -1, 0), // 3: Bottom
+      new THREE.Vector3(0, 0, 1),  // 4: Front
+      new THREE.Vector3(0, 0, -1), // 5: Back
     ];
 
     // Thumb+Ring: Cycle through all blocks
@@ -305,7 +292,6 @@ export class VoxelScene {
     this.state.targetVoxelId = voxel.id;
     this.state.targetFace = normal;
     
-    const faceCenter = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE * 0.5));
     const newPos = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE));
     this.state.targetPosition = new THREE.Vector3(
       snapToGrid(newPos.x),
@@ -313,34 +299,43 @@ export class VoxelScene {
       snapToGrid(newPos.z)
     );
 
-    // Highlight only the specific face
-    this.highlightMesh.position.copy(faceCenter);
-    this.highlightMesh.lookAt(faceCenter.clone().add(normal));
-    this.highlightMesh.position.add(normal.clone().multiplyScalar(0.001)); // Minimal offset
-    this.highlightMesh.visible = true;
-    
-    this.highlightVoxel(voxel.id);
+    this.highlightVoxelFace(voxel, this.currentFaceIndex);
   }
 
-  private highlightVoxel(id: string): void {
-    this.state.voxels.forEach((voxel, voxelId) => {
-      const material = voxel.mesh.material as THREE.MeshStandardMaterial;
-      if (voxelId === id) {
-        material.emissiveIntensity = 0.5;
-        material.emissive.set(0x00ff00);
-      } else {
-        material.emissiveIntensity = 0.1;
-        material.emissive.set(VOXEL_COLOR);
-      }
+  private highlightVoxelFace(selectedVoxel: Voxel, faceIndex: number): void {
+    this.state.voxels.forEach((voxel) => {
+      const materials = voxel.mesh.material as THREE.MeshStandardMaterial[];
+      materials.forEach((material, index) => {
+        if (voxel.id === selectedVoxel.id && index === faceIndex) {
+          material.color.set(HIGHLIGHT_COLOR);
+          material.emissive.set(HIGHLIGHT_COLOR);
+          material.emissiveIntensity = 0.5;
+        } else {
+          material.color.set(VOXEL_COLOR);
+          material.emissive.set(VOXEL_COLOR);
+          material.emissiveIntensity = 0.1;
+        }
+      });
     });
   }
 
   hideCursor(): void {
     this.cursorMesh.visible = false;
-    this.highlightMesh.visible = false;
     this.state.targetVoxelId = null;
     this.state.targetPosition = null;
     this.state.targetFace = null;
+    this.clearAllHighlights();
+  }
+
+  private clearAllHighlights(): void {
+    this.state.voxels.forEach((voxel) => {
+      const materials = voxel.mesh.material as THREE.MeshStandardMaterial[];
+      materials.forEach((material) => {
+        material.color.set(VOXEL_COLOR);
+        material.emissive.set(VOXEL_COLOR);
+        material.emissiveIntensity = 0.1;
+      });
+    });
   }
 
   placeCube(): boolean {
@@ -358,10 +353,9 @@ export class VoxelScene {
 
     this.worldGroup.remove(voxel.mesh);
     voxel.mesh.geometry.dispose();
-    (voxel.mesh.material as THREE.Material).dispose();
+    (voxel.mesh.material as THREE.Material[]).forEach(m => m.dispose());
     this.state.voxels.delete(this.state.targetVoxelId);
     this.state.targetVoxelId = null;
-    this.highlightMesh.visible = false;
 
     return true;
   }
@@ -390,7 +384,7 @@ export class VoxelScene {
     this.state.voxels.forEach((voxel) => {
       this.worldGroup.remove(voxel.mesh);
       voxel.mesh.geometry.dispose();
-      (voxel.mesh.material as THREE.Material).dispose();
+      (voxel.mesh.material as THREE.Material[]).forEach(m => m.dispose());
     });
     this.state.voxels.clear();
     this.placeInitialCube();
@@ -405,7 +399,7 @@ export class VoxelScene {
     this.state.voxels.forEach((voxel) => {
       this.worldGroup.remove(voxel.mesh);
       voxel.mesh.geometry.dispose();
-      (voxel.mesh.material as THREE.Material).dispose();
+      (voxel.mesh.material as THREE.Material[]).forEach(m => m.dispose());
     });
     this.state.voxels.clear();
     this.renderer.dispose();
