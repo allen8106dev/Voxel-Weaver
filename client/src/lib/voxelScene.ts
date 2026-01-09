@@ -10,20 +10,20 @@ export interface VoxelSceneState {
   voxels: Map<string, Voxel>;
   targetPosition: THREE.Vector3 | null;
   targetVoxelId: string | null;
+  targetFace: THREE.Vector3 | null;
   worldRotation: THREE.Euler;
-  worldPosition: THREE.Vector3;
+  rotationVelocity: THREE.Vector2;
   zoom: number;
+  zoomVelocity: number;
+  isLocked: boolean;
+  isRotating: boolean;
 }
 
-const GRID_SIZE = 0.5;
-const VOXEL_COLORS = [
-  0x00ffff, // Cyan
-  0xa855f7, // Purple
-  0xec4899, // Pink
-  0x10b981, // Green
-  0xf59e0b, // Amber
-  0x3b82f6, // Blue
-];
+const GRID_SIZE = 1;
+const VOXEL_COLOR = 0x00ffff;
+const INERTIA_DAMPING = 0.95;
+const ZOOM_SPEED = 0.03;
+const ROTATION_SENSITIVITY = 2;
 
 function snapToGrid(value: number): number {
   return Math.round(value / GRID_SIZE) * GRID_SIZE;
@@ -39,11 +39,11 @@ export class VoxelScene {
   private renderer: THREE.WebGLRenderer;
   private state: VoxelSceneState;
   private worldGroup: THREE.Group;
-  private gridHelper: THREE.GridHelper;
-  private targetIndicator: THREE.Mesh;
+  private cursorMesh: THREE.Mesh;
+  private highlightMesh: THREE.Mesh;
   private raycaster: THREE.Raycaster;
   private animationId: number | null = null;
-  private currentColorIndex = 0;
+  private lastPalmPosition: THREE.Vector3 | null = null;
   private isValid = true;
 
   constructor(container: HTMLElement) {
@@ -55,18 +55,8 @@ export class VoxelScene {
       0.1,
       1000
     );
-    this.camera.position.set(0, 2, 5);
+    this.camera.position.set(0, 0, 8);
     this.camera.lookAt(0, 0, 0);
-
-    try {
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-      if (!gl) {
-        throw new Error('WebGL not supported');
-      }
-    } catch (e) {
-      console.warn('WebGL check failed, attempting fallback');
-    }
 
     try {
       this.renderer = new THREE.WebGLRenderer({ 
@@ -77,64 +67,48 @@ export class VoxelScene {
       });
     } catch (e) {
       this.isValid = false;
-      this.renderer = null as any;
-      this.worldGroup = new THREE.Group();
-      this.gridHelper = null as any;
-      this.targetIndicator = null as any;
-      this.raycaster = new THREE.Raycaster();
-      this.state = {
-        voxels: new Map(),
-        targetPosition: null,
-        targetVoxelId: null,
-        worldRotation: new THREE.Euler(0, 0, 0),
-        worldPosition: new THREE.Vector3(0, 0, 0),
-        zoom: 1,
-      };
-      throw new Error('WebGL context creation failed. Please open this app in a new tab or ensure your browser supports WebGL.');
+      throw new Error('WebGL context creation failed. Please open this app in a new tab.');
     }
 
     this.renderer.setSize(container.clientWidth, container.clientHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setClearColor(0x000000, 0);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.setClearColor(0x0a0a0f, 1);
     container.appendChild(this.renderer.domElement);
 
     this.worldGroup = new THREE.Group();
     this.scene.add(this.worldGroup);
 
-    this.gridHelper = new THREE.GridHelper(10, 20, 0x00ffff, 0x003333);
-    this.gridHelper.position.y = -0.01;
-    this.worldGroup.add(this.gridHelper);
-
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
     this.scene.add(ambientLight);
 
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
     directionalLight.position.set(5, 10, 7);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
     this.scene.add(directionalLight);
 
-    const pointLight1 = new THREE.PointLight(0x00ffff, 0.5, 20);
-    pointLight1.position.set(-5, 5, -5);
-    this.scene.add(pointLight1);
+    const backLight = new THREE.DirectionalLight(0x6366f1, 0.4);
+    backLight.position.set(-5, -5, -5);
+    this.scene.add(backLight);
 
-    const pointLight2 = new THREE.PointLight(0xa855f7, 0.3, 20);
-    pointLight2.position.set(5, 3, 5);
-    this.scene.add(pointLight2);
-
-    const targetGeometry = new THREE.BoxGeometry(GRID_SIZE * 0.95, GRID_SIZE * 0.95, GRID_SIZE * 0.95);
-    const targetMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
+    const cursorGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+    const cursorMaterial = new THREE.MeshBasicMaterial({
+      color: 0xff00ff,
       transparent: true,
-      opacity: 0.3,
-      wireframe: true,
+      opacity: 0.8,
     });
-    this.targetIndicator = new THREE.Mesh(targetGeometry, targetMaterial);
-    this.targetIndicator.visible = false;
-    this.worldGroup.add(this.targetIndicator);
+    this.cursorMesh = new THREE.Mesh(cursorGeometry, cursorMaterial);
+    this.cursorMesh.visible = false;
+    this.scene.add(this.cursorMesh);
+
+    const highlightGeometry = new THREE.PlaneGeometry(GRID_SIZE * 0.98, GRID_SIZE * 0.98);
+    const highlightMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00ff00,
+      transparent: true,
+      opacity: 0.5,
+      side: THREE.DoubleSide,
+    });
+    this.highlightMesh = new THREE.Mesh(highlightGeometry, highlightMaterial);
+    this.highlightMesh.visible = false;
+    this.worldGroup.add(this.highlightMesh);
 
     this.raycaster = new THREE.Raycaster();
 
@@ -142,15 +116,52 @@ export class VoxelScene {
       voxels: new Map(),
       targetPosition: null,
       targetVoxelId: null,
-      worldRotation: new THREE.Euler(0, 0, 0),
-      worldPosition: new THREE.Vector3(0, 0, 0),
-      zoom: 1,
+      targetFace: null,
+      worldRotation: new THREE.Euler(0.3, 0.5, 0),
+      rotationVelocity: new THREE.Vector2(0, 0),
+      zoom: 8,
+      zoomVelocity: 0,
+      isLocked: false,
+      isRotating: false,
     };
+
+    this.placeInitialCube();
 
     this.handleResize = this.handleResize.bind(this);
     window.addEventListener('resize', this.handleResize);
 
     this.animate();
+  }
+
+  private placeInitialCube(): void {
+    const pos = new THREE.Vector3(0, 0, 0);
+    this.addVoxelAt(pos);
+  }
+
+  private addVoxelAt(position: THREE.Vector3): Voxel | null {
+    const key = positionToKey(position);
+    if (this.state.voxels.has(key)) return null;
+
+    const geometry = new THREE.BoxGeometry(GRID_SIZE * 0.95, GRID_SIZE * 0.95, GRID_SIZE * 0.95);
+    const material = new THREE.MeshStandardMaterial({
+      color: VOXEL_COLOR,
+      metalness: 0.3,
+      roughness: 0.4,
+      emissive: VOXEL_COLOR,
+      emissiveIntensity: 0.1,
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.copy(position);
+    this.worldGroup.add(mesh);
+
+    const voxel: Voxel = {
+      id: key,
+      position: position.clone(),
+      mesh,
+    };
+    this.state.voxels.set(key, voxel);
+    return voxel;
   }
 
   private handleResize(): void {
@@ -165,41 +176,77 @@ export class VoxelScene {
   private animate(): void {
     this.animationId = requestAnimationFrame(() => this.animate());
     
+    if (!this.state.isLocked) {
+      if (!this.state.isRotating) {
+        this.state.rotationVelocity.x *= INERTIA_DAMPING;
+        this.state.rotationVelocity.y *= INERTIA_DAMPING;
+      }
+      
+      this.state.worldRotation.y += this.state.rotationVelocity.x * 0.01;
+      this.state.worldRotation.x += this.state.rotationVelocity.y * 0.01;
+      this.state.worldRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.state.worldRotation.x));
+      
+      this.state.zoom += this.state.zoomVelocity;
+      this.state.zoom = Math.max(3, Math.min(20, this.state.zoom));
+      this.state.zoomVelocity *= INERTIA_DAMPING;
+    }
+
     this.worldGroup.rotation.copy(this.state.worldRotation);
-    this.worldGroup.position.copy(this.state.worldPosition);
-    
-    const targetZoom = 5 / this.state.zoom;
-    this.camera.position.z += (targetZoom - this.camera.position.z) * 0.1;
+    this.camera.position.z = this.state.zoom;
 
     this.renderer.render(this.scene, this.camera);
   }
 
-  updateWorldTransform(position: THREE.Vector3, rotation: THREE.Quaternion): void {
-    const euler = new THREE.Euler().setFromQuaternion(rotation);
+  updateLeftHand(
+    palmPosition: THREE.Vector3,
+    indexPinch: boolean,
+    middlePinch: boolean,
+    ringPinch: boolean,
+    pinkyPinch: boolean
+  ): void {
+    if (pinkyPinch) {
+      this.state.isLocked = true;
+      this.state.rotationVelocity.set(0, 0);
+      this.state.zoomVelocity = 0;
+      this.lastPalmPosition = null;
+      return;
+    }
     
-    this.state.worldRotation.x += (euler.x - this.state.worldRotation.x) * 0.1;
-    this.state.worldRotation.y += (-euler.y - this.state.worldRotation.y) * 0.1;
-    
-    this.state.worldPosition.x += (-position.x * 2 - this.state.worldPosition.x) * 0.1;
-    this.state.worldPosition.y += (position.y * 2 - this.state.worldPosition.y) * 0.1;
+    this.state.isLocked = false;
+
+    if (indexPinch) {
+      this.state.isRotating = true;
+      if (this.lastPalmPosition) {
+        const deltaX = (palmPosition.x - this.lastPalmPosition.x) * ROTATION_SENSITIVITY;
+        const deltaY = (palmPosition.y - this.lastPalmPosition.y) * ROTATION_SENSITIVITY;
+        this.state.rotationVelocity.x = deltaX * 10;
+        this.state.rotationVelocity.y = deltaY * 10;
+      }
+      this.lastPalmPosition = palmPosition.clone();
+    } else {
+      this.state.isRotating = false;
+      this.lastPalmPosition = null;
+    }
+
+    if (middlePinch) {
+      this.state.zoomVelocity = -ZOOM_SPEED;
+    } else if (ringPinch) {
+      this.state.zoomVelocity = ZOOM_SPEED;
+    }
   }
 
-  zoomIn(): void {
-    this.state.zoom = Math.min(3, this.state.zoom + 0.02);
-  }
-
-  zoomOut(): void {
-    this.state.zoom = Math.max(0.3, this.state.zoom - 0.02);
-  }
-
-  updateTargetFromRay(origin: THREE.Vector3, direction: THREE.Vector3): void {
-    const worldOrigin = origin.clone().applyEuler(this.state.worldRotation);
-    const worldDirection = direction.clone().applyEuler(this.state.worldRotation);
-    
-    this.raycaster.set(
-      new THREE.Vector3(worldOrigin.x * 3, worldOrigin.y * 3 + 2, 3),
-      worldDirection.normalize()
+  updateCursor(palmPosition: THREE.Vector3): { hasTarget: boolean; canPlace: boolean; canDelete: boolean } {
+    const cursorWorldPos = new THREE.Vector3(
+      palmPosition.x * 5,
+      palmPosition.y * 5,
+      5
     );
+    
+    this.cursorMesh.position.copy(cursorWorldPos);
+    this.cursorMesh.visible = true;
+
+    const rayDirection = new THREE.Vector3(0, 0, -1);
+    this.raycaster.set(cursorWorldPos, rayDirection);
 
     const voxelMeshes = Array.from(this.state.voxels.values()).map(v => v.mesh);
     const intersects = this.raycaster.intersectObjects(voxelMeshes);
@@ -209,50 +256,47 @@ export class VoxelScene {
       const hitMesh = hit.object as THREE.Mesh;
       
       const voxel = Array.from(this.state.voxels.values()).find(v => v.mesh === hitMesh);
-      if (voxel) {
+      if (voxel && hit.face) {
         this.state.targetVoxelId = voxel.id;
         
-        const normal = hit.face?.normal || new THREE.Vector3(0, 1, 0);
-        const newPos = voxel.position.clone().add(normal.multiplyScalar(GRID_SIZE));
+        const normal = hit.face.normal.clone();
+        normal.applyQuaternion(hitMesh.quaternion);
+        this.state.targetFace = normal;
+        
+        const newPos = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE));
         this.state.targetPosition = new THREE.Vector3(
           snapToGrid(newPos.x),
           snapToGrid(newPos.y),
           snapToGrid(newPos.z)
         );
-        
-        this.targetIndicator.position.copy(this.state.targetPosition);
-        this.targetIndicator.visible = true;
+
+        this.highlightMesh.position.copy(hit.point);
+        this.highlightMesh.lookAt(hit.point.clone().add(normal));
+        this.highlightMesh.position.add(normal.clone().multiplyScalar(0.01));
+        this.highlightMesh.visible = true;
 
         this.highlightVoxel(voxel.id);
-        return;
+        
+        const canPlace = !this.state.voxels.has(positionToKey(this.state.targetPosition));
+        return { hasTarget: true, canPlace, canDelete: true };
       }
     }
 
     this.state.targetVoxelId = null;
+    this.state.targetPosition = null;
+    this.state.targetFace = null;
+    this.highlightMesh.visible = false;
+    this.clearHighlights();
     
-    const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    const rayOrigin = new THREE.Vector3(origin.x * 3, origin.y * 3 + 2, 3);
-    const ray = new THREE.Ray(rayOrigin, direction.normalize());
-    const groundHit = new THREE.Vector3();
-    
-    if (ray.intersectPlane(groundPlane, groundHit)) {
-      this.state.targetPosition = new THREE.Vector3(
-        snapToGrid(groundHit.x),
-        snapToGrid(GRID_SIZE / 2),
-        snapToGrid(groundHit.z)
-      );
-      this.targetIndicator.position.copy(this.state.targetPosition);
-      this.targetIndicator.visible = true;
-    } else {
-      this.state.targetPosition = new THREE.Vector3(
-        snapToGrid(direction.x * 2),
-        snapToGrid(GRID_SIZE / 2),
-        snapToGrid(direction.z * 2)
-      );
-      this.targetIndicator.position.copy(this.state.targetPosition);
-      this.targetIndicator.visible = true;
-    }
+    return { hasTarget: false, canPlace: false, canDelete: false };
+  }
 
+  hideCursor(): void {
+    this.cursorMesh.visible = false;
+    this.highlightMesh.visible = false;
+    this.state.targetVoxelId = null;
+    this.state.targetPosition = null;
+    this.state.targetFace = null;
     this.clearHighlights();
   }
 
@@ -260,7 +304,7 @@ export class VoxelScene {
     this.state.voxels.forEach((voxel, voxelId) => {
       const material = voxel.mesh.material as THREE.MeshStandardMaterial;
       if (voxelId === id) {
-        material.emissiveIntensity = 0.5;
+        material.emissiveIntensity = 0.4;
       } else {
         material.emissiveIntensity = 0.1;
       }
@@ -276,39 +320,13 @@ export class VoxelScene {
 
   placeCube(): boolean {
     if (!this.state.targetPosition) return false;
-
-    const key = positionToKey(this.state.targetPosition);
-    if (this.state.voxels.has(key)) return false;
-
-    const geometry = new THREE.BoxGeometry(GRID_SIZE * 0.9, GRID_SIZE * 0.9, GRID_SIZE * 0.9);
-    const color = VOXEL_COLORS[this.currentColorIndex % VOXEL_COLORS.length];
-    const material = new THREE.MeshStandardMaterial({
-      color: color,
-      metalness: 0.3,
-      roughness: 0.4,
-      emissive: color,
-      emissiveIntensity: 0.1,
-    });
-
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.copy(this.state.targetPosition);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    this.worldGroup.add(mesh);
-
-    const voxel: Voxel = {
-      id: key,
-      position: this.state.targetPosition.clone(),
-      mesh,
-    };
-    this.state.voxels.set(key, voxel);
-    this.currentColorIndex++;
-
-    return true;
+    const voxel = this.addVoxelAt(this.state.targetPosition);
+    return voxel !== null;
   }
 
   deleteCube(): boolean {
     if (!this.state.targetVoxelId) return false;
+    if (this.state.voxels.size <= 1) return false;
 
     const voxel = this.state.voxels.get(this.state.targetVoxelId);
     if (!voxel) return false;
@@ -318,15 +336,9 @@ export class VoxelScene {
     (voxel.mesh.material as THREE.Material).dispose();
     this.state.voxels.delete(this.state.targetVoxelId);
     this.state.targetVoxelId = null;
+    this.highlightMesh.visible = false;
 
     return true;
-  }
-
-  hideTarget(): void {
-    this.targetIndicator.visible = false;
-    this.state.targetPosition = null;
-    this.state.targetVoxelId = null;
-    this.clearHighlights();
   }
 
   getVoxelCount(): number {
@@ -337,6 +349,10 @@ export class VoxelScene {
     return this.state.zoom;
   }
 
+  isLockedState(): boolean {
+    return this.state.isLocked;
+  }
+
   clearAll(): void {
     this.state.voxels.forEach((voxel) => {
       this.worldGroup.remove(voxel.mesh);
@@ -344,7 +360,7 @@ export class VoxelScene {
       (voxel.mesh.material as THREE.Material).dispose();
     });
     this.state.voxels.clear();
-    this.currentColorIndex = 0;
+    this.placeInitialCube();
   }
 
   destroy(): void {
@@ -353,7 +369,12 @@ export class VoxelScene {
     }
     window.removeEventListener('resize', this.handleResize);
     
-    this.clearAll();
+    this.state.voxels.forEach((voxel) => {
+      this.worldGroup.remove(voxel.mesh);
+      voxel.mesh.geometry.dispose();
+      (voxel.mesh.material as THREE.Material).dispose();
+    });
+    this.state.voxels.clear();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }

@@ -4,10 +4,10 @@ import * as THREE from 'three';
 export interface GestureState {
   indexThumbPinch: boolean;
   middleThumbPinch: boolean;
-  indexDirection: THREE.Vector3;
+  ringThumbPinch: boolean;
+  pinkyThumbPinch: boolean;
   palmPosition: THREE.Vector3;
   palmRotation: THREE.Quaternion;
-  handOpen: boolean;
 }
 
 export interface HandGestures {
@@ -15,16 +15,16 @@ export interface HandGestures {
   right: GestureState | null;
 }
 
-const PINCH_THRESHOLD = 0.06;
-const HAND_OPEN_THRESHOLD = 0.15;
+const PINCH_THRESHOLD = 0.07;
 
 const THUMB_TIP = 4;
 const INDEX_TIP = 8;
 const MIDDLE_TIP = 12;
+const RING_TIP = 16;
+const PINKY_TIP = 20;
 const INDEX_MCP = 5;
 const WRIST = 0;
 const MIDDLE_MCP = 9;
-const RING_MCP = 13;
 const PINKY_MCP = 17;
 
 function distance3D(
@@ -38,7 +38,7 @@ function distance3D(
 
 function landmarkToVector3(landmark: { x: number; y: number; z: number }): THREE.Vector3 {
   return new THREE.Vector3(
-    (landmark.x - 0.5) * 2,
+    -(landmark.x - 0.5) * 2,
     -(landmark.y - 0.5) * 2,
     -landmark.z * 2
   );
@@ -51,11 +51,8 @@ function computePalmRotation(landmarks: NormalizedLandmarkList): THREE.Quaternio
   const pinkyMcp = landmarkToVector3(landmarks[PINKY_MCP]);
 
   const forward = new THREE.Vector3().subVectors(middleMcp, wrist).normalize();
-  
   const left = new THREE.Vector3().subVectors(indexMcp, pinkyMcp).normalize();
-  
   const up = new THREE.Vector3().crossVectors(forward, left).normalize();
-  
   const adjustedLeft = new THREE.Vector3().crossVectors(up, forward).normalize();
 
   const rotationMatrix = new THREE.Matrix4();
@@ -67,47 +64,29 @@ function computePalmRotation(landmarks: NormalizedLandmarkList): THREE.Quaternio
   return quaternion;
 }
 
-function isHandOpen(landmarks: NormalizedLandmarkList): boolean {
-  const wrist = landmarks[WRIST];
-  const indexTip = landmarks[INDEX_TIP];
-  const middleTip = landmarks[MIDDLE_TIP];
-  
-  const indexDist = distance3D(wrist, indexTip);
-  const middleDist = distance3D(wrist, middleTip);
-  
-  return indexDist > HAND_OPEN_THRESHOLD && middleDist > HAND_OPEN_THRESHOLD;
-}
-
 export function analyzeGestures(landmarks: NormalizedLandmarkList): GestureState {
   const thumbTip = landmarks[THUMB_TIP];
   const indexTip = landmarks[INDEX_TIP];
   const middleTip = landmarks[MIDDLE_TIP];
-  const indexMcp = landmarks[INDEX_MCP];
+  const ringTip = landmarks[RING_TIP];
+  const pinkyTip = landmarks[PINKY_TIP];
   const wrist = landmarks[WRIST];
 
   const indexThumbDistance = distance3D(thumbTip, indexTip);
   const middleThumbDistance = distance3D(thumbTip, middleTip);
-
-  const indexThumbPinch = indexThumbDistance < PINCH_THRESHOLD;
-  const middleThumbPinch = middleThumbDistance < PINCH_THRESHOLD;
-
-  const indexDirection = new THREE.Vector3(
-    indexTip.x - indexMcp.x,
-    -(indexTip.y - indexMcp.y),
-    -(indexTip.z - indexMcp.z)
-  ).normalize();
+  const ringThumbDistance = distance3D(thumbTip, ringTip);
+  const pinkyThumbDistance = distance3D(thumbTip, pinkyTip);
 
   const palmPosition = landmarkToVector3(wrist);
   const palmRotation = computePalmRotation(landmarks);
-  const handOpen = isHandOpen(landmarks);
 
   return {
-    indexThumbPinch,
-    middleThumbPinch,
-    indexDirection,
+    indexThumbPinch: indexThumbDistance < PINCH_THRESHOLD,
+    middleThumbPinch: middleThumbDistance < PINCH_THRESHOLD,
+    ringThumbPinch: ringThumbDistance < PINCH_THRESHOLD,
+    pinkyThumbPinch: pinkyThumbDistance < PINCH_THRESHOLD,
     palmPosition,
     palmRotation,
-    handOpen,
   };
 }
 

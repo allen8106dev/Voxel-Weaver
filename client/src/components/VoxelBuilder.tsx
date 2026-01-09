@@ -12,8 +12,10 @@ import {
   Box,
   ZoomIn,
   ZoomOut,
-  Move,
-  MousePointer,
+  RotateCcw,
+  Lock,
+  Plus,
+  Minus,
   ExternalLink,
   AlertTriangle
 } from 'lucide-react';
@@ -21,23 +23,20 @@ import {
 interface GestureDebounce {
   rightIndexPinch: boolean;
   rightMiddlePinch: boolean;
-  leftIndexPinch: boolean;
-  leftMiddlePinch: boolean;
 }
 
 export function VoxelBuilder() {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<VoxelScene | null>(null);
   const { isInitialized, isRunning, error, gestures, videoRef, start, stop } = useHandTracking();
-  const [voxelCount, setVoxelCount] = useState(0);
-  const [zoom, setZoom] = useState(1);
+  const [voxelCount, setVoxelCount] = useState(1);
+  const [isLocked, setIsLocked] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
   const [webglError, setWebglError] = useState<string | null>(null);
+  const [cursorStatus, setCursorStatus] = useState({ hasTarget: false, canPlace: false, canDelete: false });
   const lastGestureRef = useRef<GestureDebounce>({
     rightIndexPinch: false,
     rightMiddlePinch: false,
-    leftIndexPinch: false,
-    leftMiddlePinch: false,
   });
 
   useEffect(() => {
@@ -46,6 +45,7 @@ export function VoxelBuilder() {
     try {
       const scene = new VoxelScene(containerRef.current);
       sceneRef.current = scene;
+      setVoxelCount(scene.getVoxelCount());
 
       return () => {
         scene.destroy();
@@ -64,35 +64,28 @@ export function VoxelBuilder() {
     const lastGesture = lastGestureRef.current;
 
     if (gestures.left) {
-      scene.updateWorldTransform(gestures.left.palmPosition, gestures.left.palmRotation);
-
-      if (gestures.left.indexThumbPinch && !lastGesture.leftIndexPinch) {
-        scene.zoomIn();
-      } else if (gestures.left.indexThumbPinch) {
-        scene.zoomIn();
-      }
-
-      if (gestures.left.middleThumbPinch && !lastGesture.leftMiddlePinch) {
-        scene.zoomOut();
-      } else if (gestures.left.middleThumbPinch) {
-        scene.zoomOut();
-      }
-
-      lastGesture.leftIndexPinch = gestures.left.indexThumbPinch;
-      lastGesture.leftMiddlePinch = gestures.left.middleThumbPinch;
+      scene.updateLeftHand(
+        gestures.left.palmPosition,
+        gestures.left.indexThumbPinch,
+        gestures.left.middleThumbPinch,
+        gestures.left.ringThumbPinch,
+        gestures.left.pinkyThumbPinch
+      );
+      setIsLocked(scene.isLockedState());
     }
 
     if (gestures.right) {
-      scene.updateTargetFromRay(gestures.right.palmPosition, gestures.right.indexDirection);
+      const status = scene.updateCursor(gestures.right.palmPosition);
+      setCursorStatus(status);
 
       if (gestures.right.indexThumbPinch && !lastGesture.rightIndexPinch) {
-        if (scene.placeCube()) {
+        if (status.canPlace && scene.placeCube()) {
           setVoxelCount(scene.getVoxelCount());
         }
       }
 
       if (gestures.right.middleThumbPinch && !lastGesture.rightMiddlePinch) {
-        if (scene.deleteCube()) {
+        if (status.canDelete && scene.deleteCube()) {
           setVoxelCount(scene.getVoxelCount());
         }
       }
@@ -100,10 +93,9 @@ export function VoxelBuilder() {
       lastGesture.rightIndexPinch = gestures.right.indexThumbPinch;
       lastGesture.rightMiddlePinch = gestures.right.middleThumbPinch;
     } else {
-      scene.hideTarget();
+      scene.hideCursor();
+      setCursorStatus({ hasTarget: false, canPlace: false, canDelete: false });
     }
-
-    setZoom(scene.getZoom());
   }, []);
 
   useEffect(() => {
@@ -113,15 +105,15 @@ export function VoxelBuilder() {
   const handleClear = () => {
     if (sceneRef.current) {
       sceneRef.current.clearAll();
-      setVoxelCount(0);
+      setVoxelCount(1);
     }
   };
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-background">
+    <div className="relative w-full h-screen overflow-hidden bg-[#0a0a0f]">
       <div 
         ref={containerRef} 
-        className="absolute inset-0 grid-pattern"
+        className="absolute inset-0"
         data-testid="canvas-3d-scene"
       />
 
@@ -139,7 +131,7 @@ export function VoxelBuilder() {
           VoxelCraft
         </h1>
         <p className="text-sm text-muted-foreground">
-          3D Hand-Tracking Builder
+          Hand-Tracking 3D Builder
         </p>
       </div>
 
@@ -173,7 +165,7 @@ export function VoxelBuilder() {
           data-testid="button-clear-all"
         >
           <Trash2 className="w-4 h-4 mr-2" />
-          Clear All
+          Reset
         </Button>
 
         <Button
@@ -191,43 +183,52 @@ export function VoxelBuilder() {
         <div className="flex items-center gap-3">
           <Box className="w-5 h-5 text-primary" />
           <span className="font-mono text-lg" data-testid="text-voxel-count">
-            {voxelCount} voxels
+            {voxelCount} {voxelCount === 1 ? 'voxel' : 'voxels'}
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          <ZoomIn className="w-5 h-5 text-secondary" />
-          <span className="font-mono text-lg" data-testid="text-zoom-level">
-            {(zoom * 100).toFixed(0)}% zoom
-          </span>
-        </div>
+        {isLocked && (
+          <div className="flex items-center gap-3 text-amber-400">
+            <Lock className="w-5 h-5" />
+            <span className="font-mono text-sm">LOCKED</span>
+          </div>
+        )}
+        {cursorStatus.hasTarget && (
+          <div className="flex items-center gap-2 text-green-400">
+            <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse" />
+            <span className="text-xs">Surface Selected</span>
+          </div>
+        )}
         <div className="flex items-center gap-2 mt-2">
           <div className={`w-3 h-3 rounded-full ${gestures.left ? 'bg-primary animate-pulse' : 'bg-muted'}`} />
-          <span className="text-xs text-muted-foreground">Left Hand</span>
+          <span className="text-xs text-muted-foreground">Left</span>
           <div className={`w-3 h-3 rounded-full ml-2 ${gestures.right ? 'bg-secondary animate-pulse' : 'bg-muted'}`} />
-          <span className="text-xs text-muted-foreground">Right Hand</span>
+          <span className="text-xs text-muted-foreground">Right</span>
         </div>
       </div>
 
       {showInstructions && (
         <div className="absolute top-20 left-4 glass-strong rounded-xl p-4 max-w-sm space-y-4" data-testid="panel-instructions">
           <h3 className="font-display text-lg text-primary border-b border-primary/20 pb-2">
-            Hand Controls
+            Controls
           </h3>
           
           <div className="space-y-3">
             <div className="flex items-start gap-3">
               <Hand className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-semibold text-sm">Left Hand - World Control</p>
+                <p className="font-semibold text-sm text-primary">Left Hand - View Control</p>
                 <ul className="text-xs text-muted-foreground space-y-1 mt-1">
                   <li className="flex items-center gap-2">
-                    <Move className="w-3 h-3" /> Move hand → Rotate/Move scene
+                    <RotateCcw className="w-3 h-3" /> Thumb + Index → Rotate (drag)
                   </li>
                   <li className="flex items-center gap-2">
-                    <ZoomIn className="w-3 h-3" /> Index + Thumb pinch → Zoom in
+                    <ZoomIn className="w-3 h-3" /> Thumb + Middle → Zoom in
                   </li>
                   <li className="flex items-center gap-2">
-                    <ZoomOut className="w-3 h-3" /> Middle + Thumb pinch → Zoom out
+                    <ZoomOut className="w-3 h-3" /> Thumb + Ring → Zoom out
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Lock className="w-3 h-3" /> Thumb + Pinky → Lock view
                   </li>
                 </ul>
               </div>
@@ -236,16 +237,16 @@ export function VoxelBuilder() {
             <div className="flex items-start gap-3">
               <Hand className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-semibold text-sm">Right Hand - Cube Control</p>
+                <p className="font-semibold text-sm text-secondary">Right Hand - Build</p>
                 <ul className="text-xs text-muted-foreground space-y-1 mt-1">
                   <li className="flex items-center gap-2">
-                    <MousePointer className="w-3 h-3" /> Point index finger → Aim cursor
+                    <Box className="w-3 h-3" /> Move hand → Cursor follows
                   </li>
                   <li className="flex items-center gap-2">
-                    <Box className="w-3 h-3 text-green-400" /> Index + Thumb pinch → Place cube
+                    <Plus className="w-3 h-3 text-green-400" /> Thumb + Index → Place cube
                   </li>
                   <li className="flex items-center gap-2">
-                    <Trash2 className="w-3 h-3 text-red-400" /> Middle + Thumb pinch → Delete cube
+                    <Minus className="w-3 h-3 text-red-400" /> Thumb + Middle → Delete cube
                   </li>
                 </ul>
               </div>
@@ -253,7 +254,7 @@ export function VoxelBuilder() {
           </div>
 
           <p className="text-xs text-muted-foreground/70 border-t border-primary/10 pt-2">
-            Motion is mirrored: move left to rotate left. Cubes snap to grid automatically.
+            Point at a block face to place adjacent cubes. Release rotation pinch for inertia effect.
           </p>
         </div>
       )}
@@ -263,7 +264,7 @@ export function VoxelBuilder() {
           <AlertTriangle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
           <h3 className="font-display text-lg text-amber-400 mb-2">WebGL Required</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            This 3D application requires WebGL. The preview iframe may have limited WebGL support.
+            This 3D app requires WebGL. The preview may have limited support.
           </p>
           <Button
             onClick={() => window.open(window.location.href, '_blank')}
@@ -273,9 +274,6 @@ export function VoxelBuilder() {
             <ExternalLink className="w-4 h-4 mr-2" />
             Open in New Tab
           </Button>
-          <p className="text-xs text-muted-foreground/70 mt-4">
-            Opening in a new browser tab usually resolves WebGL issues.
-          </p>
         </div>
       )}
 
@@ -284,13 +282,10 @@ export function VoxelBuilder() {
           <CameraOff className="w-12 h-12 text-destructive mx-auto mb-4" />
           <h3 className="font-display text-lg text-destructive mb-2">Camera Error</h3>
           <p className="text-sm text-muted-foreground">{error}</p>
-          <p className="text-xs text-muted-foreground/70 mt-2">
-            Make sure to allow camera access when prompted.
-          </p>
         </div>
       )}
 
-      {!isRunning && !error && isInitialized && (
+      {!isRunning && !error && !webglError && isInitialized && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center" data-testid="panel-start-prompt">
           <div className="glass-strong rounded-2xl p-8 cyber-border animate-pulse-glow">
             <Hand className="w-16 h-16 text-primary mx-auto mb-4" />
@@ -298,7 +293,7 @@ export function VoxelBuilder() {
               Ready to Build
             </h2>
             <p className="text-muted-foreground mb-4">
-              Click "Start Tracking" to begin using your hands
+              Click "Start Tracking" to begin
             </p>
           </div>
         </div>
