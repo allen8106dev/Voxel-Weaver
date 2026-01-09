@@ -244,6 +244,9 @@ export class VoxelScene {
       palmPosition.y * 5,
       5
     );
+    
+    this.cursorMesh.position.copy(cursorWorldPos);
+    this.cursorMesh.visible = true;
 
     const voxels = Array.from(this.state.voxels.values());
     if (voxels.length === 0) {
@@ -316,17 +319,18 @@ export class VoxelScene {
   }
 
   private highlightVoxelFace(selectedVoxel: Voxel, faceIndex: number): void {
+    const HIGHLIGHT_RED = 0xff0000;
     this.state.voxels.forEach((voxel) => {
       const materials = voxel.mesh.material as THREE.MeshStandardMaterial[];
       materials.forEach((material, index) => {
         if (voxel.id === selectedVoxel.id) {
           if (index === faceIndex) {
             // Selected face is red
-            material.color.set(HIGHLIGHT_COLOR);
-            material.emissive.set(HIGHLIGHT_COLOR);
+            material.color.set(HIGHLIGHT_RED);
+            material.emissive.set(HIGHLIGHT_RED);
             material.emissiveIntensity = 0.5;
           } else {
-            // Other faces of the same cube are green
+            // Other faces of the same cube are green/highlighted
             material.color.set(0x00ff00);
             material.emissive.set(0x00ff00);
             material.emissiveIntensity = 0.3;
