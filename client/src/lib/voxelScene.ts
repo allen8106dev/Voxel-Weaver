@@ -112,7 +112,7 @@ export class VoxelScene {
     // Face highlight mesh
     const highlightGeometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE);
     const highlightMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ff00,
+      color: 0xff0000, // Red highlight for surfaces
       transparent: true,
       opacity: 0.5,
       side: THREE.FrontSide, // Only highlight front-facing surface
