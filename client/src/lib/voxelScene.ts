@@ -306,11 +306,20 @@ export class VoxelScene {
     this.state.voxels.forEach((voxel) => {
       const materials = voxel.mesh.material as THREE.MeshStandardMaterial[];
       materials.forEach((material, index) => {
-        if (voxel.id === selectedVoxel.id && index === faceIndex) {
-          material.color.set(HIGHLIGHT_COLOR);
-          material.emissive.set(HIGHLIGHT_COLOR);
-          material.emissiveIntensity = 0.5;
+        if (voxel.id === selectedVoxel.id) {
+          if (index === faceIndex) {
+            // Selected face is red
+            material.color.set(HIGHLIGHT_COLOR);
+            material.emissive.set(HIGHLIGHT_COLOR);
+            material.emissiveIntensity = 0.5;
+          } else {
+            // Other faces of the same cube are green
+            material.color.set(0x00ff00);
+            material.emissive.set(0x00ff00);
+            material.emissiveIntensity = 0.3;
+          }
         } else {
+          // Unselected cubes stay original color
           material.color.set(VOXEL_COLOR);
           material.emissive.set(VOXEL_COLOR);
           material.emissiveIntensity = 0.1;
