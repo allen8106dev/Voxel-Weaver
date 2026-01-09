@@ -104,11 +104,11 @@ export class VoxelScene {
     this.cursorMesh.visible = false;
     this.scene.add(this.cursorMesh);
 
-    const highlightGeometry = new THREE.PlaneGeometry(GRID_SIZE * 0.98, GRID_SIZE * 0.98);
+    const highlightGeometry = new THREE.BoxGeometry(GRID_SIZE * 1.01, GRID_SIZE * 1.01, GRID_SIZE * 1.01);
     const highlightMaterial = new THREE.MeshBasicMaterial({
       color: 0x00ff00,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.3,
       side: THREE.DoubleSide,
     });
     this.highlightMesh = new THREE.Mesh(highlightGeometry, highlightMaterial);
@@ -302,8 +302,7 @@ export class VoxelScene {
         snapToGrid(newPos.z)
       );
 
-      this.highlightMesh.position.copy(closestFaceCenter);
-      this.highlightMesh.lookAt(closestFaceCenter.clone().add(closestFaceNormal));
+      this.highlightMesh.position.copy(closestVoxel.position);
       this.highlightMesh.visible = true;
 
       this.cursorMesh.position.copy(closestFaceCenter.clone().applyEuler(this.state.worldRotation));
