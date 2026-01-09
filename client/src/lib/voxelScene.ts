@@ -89,13 +89,18 @@ export class VoxelScene {
     backLight.position.set(-5, -5, -5);
     this.scene.add(backLight);
 
-    const cursorGeometry = new THREE.SphereGeometry(0.15, 16, 16);
-    const cursorMaterial = new THREE.MeshBasicMaterial({
+    // Small crosshair cursor
+    const crosshairSize = 0.05;
+    const cursorGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-crosshairSize, 0, 0), new THREE.Vector3(crosshairSize, 0, 0),
+      new THREE.Vector3(0, -crosshairSize, 0), new THREE.Vector3(0, crosshairSize, 0),
+      new THREE.Vector3(0, 0, -crosshairSize), new THREE.Vector3(0, 0, crosshairSize)
+    ]);
+    const cursorMaterial = new THREE.LineBasicMaterial({
       color: 0xff00ff,
-      transparent: true,
-      opacity: 0.8,
+      linewidth: 2,
     });
-    this.cursorMesh = new THREE.Mesh(cursorGeometry, cursorMaterial);
+    this.cursorMesh = new THREE.LineSegments(cursorGeometry, cursorMaterial) as any;
     this.cursorMesh.visible = false;
     this.scene.add(this.cursorMesh);
 
@@ -284,7 +289,7 @@ export class VoxelScene {
       }
     }
 
-    const LATCH_DISTANCE = 4;
+    const LATCH_DISTANCE = 2; // Reduced latch distance for better control
 
     if (closestVoxel && closestFaceNormal && closestFaceCenter && closestDistance < LATCH_DISTANCE) {
       this.state.targetVoxelId = closestVoxel.id;
