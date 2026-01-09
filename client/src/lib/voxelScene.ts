@@ -245,41 +245,69 @@ export class VoxelScene {
     this.cursorMesh.position.copy(cursorWorldPos);
     this.cursorMesh.visible = true;
 
-    const rayDirection = new THREE.Vector3(0, 0, -1);
-    this.raycaster.set(cursorWorldPos, rayDirection);
+    const voxels = Array.from(this.state.voxels.values());
+    if (voxels.length === 0) {
+      return { hasTarget: false, canPlace: false, canDelete: false };
+    }
 
-    const voxelMeshes = Array.from(this.state.voxels.values()).map(v => v.mesh);
-    const intersects = this.raycaster.intersectObjects(voxelMeshes);
+    let closestVoxel: typeof voxels[0] | null = null;
+    let closestFaceNormal: THREE.Vector3 | null = null;
+    let closestFaceCenter: THREE.Vector3 | null = null;
+    let closestDistance = Infinity;
 
-    if (intersects.length > 0) {
-      const hit = intersects[0];
-      const hitMesh = hit.object as THREE.Mesh;
-      
-      const voxel = Array.from(this.state.voxels.values()).find(v => v.mesh === hitMesh);
-      if (voxel && hit.face) {
-        this.state.targetVoxelId = voxel.id;
+    const inverseRotation = new THREE.Quaternion().setFromEuler(this.state.worldRotation).invert();
+    const cursorInWorldSpace = cursorWorldPos.clone().applyQuaternion(inverseRotation);
+
+    const faceNormals = [
+      new THREE.Vector3(0, 0, 1),
+      new THREE.Vector3(0, 0, -1),
+      new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(0, -1, 0),
+      new THREE.Vector3(1, 0, 0),
+      new THREE.Vector3(-1, 0, 0),
+    ];
+
+    for (const voxel of voxels) {
+      for (const normal of faceNormals) {
+        const faceCenter = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE * 0.5));
+        const rotatedFaceCenter = faceCenter.clone().applyEuler(this.state.worldRotation);
+        rotatedFaceCenter.z += this.state.zoom;
         
-        const normal = hit.face.normal.clone();
-        normal.applyQuaternion(hitMesh.quaternion);
-        this.state.targetFace = normal;
+        const distance = cursorWorldPos.distanceTo(rotatedFaceCenter);
         
-        const newPos = voxel.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE));
-        this.state.targetPosition = new THREE.Vector3(
-          snapToGrid(newPos.x),
-          snapToGrid(newPos.y),
-          snapToGrid(newPos.z)
-        );
-
-        this.highlightMesh.position.copy(hit.point);
-        this.highlightMesh.lookAt(hit.point.clone().add(normal));
-        this.highlightMesh.position.add(normal.clone().multiplyScalar(0.01));
-        this.highlightMesh.visible = true;
-
-        this.highlightVoxel(voxel.id);
-        
-        const canPlace = !this.state.voxels.has(positionToKey(this.state.targetPosition));
-        return { hasTarget: true, canPlace, canDelete: true };
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestVoxel = voxel;
+          closestFaceNormal = normal.clone();
+          closestFaceCenter = faceCenter.clone();
+        }
       }
+    }
+
+    const LATCH_DISTANCE = 4;
+
+    if (closestVoxel && closestFaceNormal && closestFaceCenter && closestDistance < LATCH_DISTANCE) {
+      this.state.targetVoxelId = closestVoxel.id;
+      this.state.targetFace = closestFaceNormal;
+      
+      const newPos = closestVoxel.position.clone().add(closestFaceNormal.clone().multiplyScalar(GRID_SIZE));
+      this.state.targetPosition = new THREE.Vector3(
+        snapToGrid(newPos.x),
+        snapToGrid(newPos.y),
+        snapToGrid(newPos.z)
+      );
+
+      this.highlightMesh.position.copy(closestFaceCenter);
+      this.highlightMesh.lookAt(closestFaceCenter.clone().add(closestFaceNormal));
+      this.highlightMesh.visible = true;
+
+      this.cursorMesh.position.copy(closestFaceCenter.clone().applyEuler(this.state.worldRotation));
+      this.cursorMesh.position.z += this.state.zoom;
+
+      this.highlightVoxel(closestVoxel.id);
+      
+      const canPlace = !this.state.voxels.has(positionToKey(this.state.targetPosition));
+      return { hasTarget: true, canPlace, canDelete: true };
     }
 
     this.state.targetVoxelId = null;
