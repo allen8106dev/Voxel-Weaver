@@ -51,6 +51,11 @@ export function useHandTracking(showOverlay: boolean = true): UseHandTrackingRes
   const [error, setError] = useState<string | null>(null);
   const [gestures, setGestures] = useState<HandGestures>({ left: null, right: null });
 
+  const showOverlayRef = useRef(showOverlay);
+  useEffect(() => {
+    showOverlayRef.current = showOverlay;
+  }, [showOverlay]);
+
   const handleResults = useCallback((result: HandTrackingResult) => {
     const newGestures = processHandGestures(result.leftHand, result.rightHand);
     setGestures(newGestures);
@@ -61,7 +66,7 @@ export function useHandTracking(showOverlay: boolean = true): UseHandTrackingRes
         canvasCtx.save();
         canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
         
-        if (showOverlay && result.rawResults && result.rawResults.multiHandLandmarks) {
+        if (showOverlayRef.current && result.rawResults && result.rawResults.multiHandLandmarks) {
           for (const landmarks of result.rawResults.multiHandLandmarks) {
             drawHand(canvasCtx, landmarks);
           }
@@ -69,7 +74,7 @@ export function useHandTracking(showOverlay: boolean = true): UseHandTrackingRes
         canvasCtx.restore();
       }
     }
-  }, [showOverlay]);
+  }, []); // Stable callback
 
   useEffect(() => {
     const initTracker = async () => {
@@ -96,7 +101,7 @@ export function useHandTracking(showOverlay: boolean = true): UseHandTrackingRes
         trackerRef.current = null;
       }
     };
-  }, [handleResults]);
+  }, []); // Remove handleResults from dependency array to prevent re-initialization on overlay toggle
 
   const start = useCallback(() => {
     if (trackerRef.current && isInitialized) {
