@@ -8,7 +8,7 @@ import NotFound from "@/pages/not-found";
 
 function AppRouter() {
   return (
-    <Router base="/Voxel-Weaver">
+    <Router base={import.meta.env.BASE_URL}>
       <Switch>
         <Route path="/" component={Home} />
         <Route component={NotFound} />
