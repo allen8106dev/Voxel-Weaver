@@ -1,6 +1,8 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { HandTracker, HandTrackingResult } from '@/lib/handTracking';
 import { HandGestures, processHandGestures } from '@/lib/gestureRecognition';
+import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
+import { HAND_CONNECTIONS } from '@mediapipe/hands';
 
 export interface UseHandTrackingResult {
   isInitialized: boolean;
@@ -8,12 +10,14 @@ export interface UseHandTrackingResult {
   error: string | null;
   gestures: HandGestures;
   videoRef: React.RefObject<HTMLVideoElement | null>;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
   start: () => void;
   stop: () => void;
 }
 
-export function useHandTracking(): UseHandTrackingResult {
+export function useHandTracking(showOverlay: boolean = true): UseHandTrackingResult {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const trackerRef = useRef<HandTracker | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -23,7 +27,29 @@ export function useHandTracking(): UseHandTrackingResult {
   const handleResults = useCallback((result: HandTrackingResult) => {
     const newGestures = processHandGestures(result.leftHand, result.rightHand);
     setGestures(newGestures);
-  }, []);
+
+    if (canvasRef.current) {
+      const canvasCtx = canvasRef.current.getContext('2d');
+      if (canvasCtx) {
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        
+        if (showOverlay && result.rawResults && result.rawResults.multiHandLandmarks) {
+          for (const landmarks of result.rawResults.multiHandLandmarks) {
+            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
+              color: '#00FF00',
+              lineWidth: 5,
+            });
+            drawLandmarks(canvasCtx, landmarks, {
+              color: '#FF0000',
+              lineWidth: 2,
+            });
+          }
+        }
+        canvasCtx.restore();
+      }
+    }
+  }, [showOverlay]);
 
   useEffect(() => {
     const initTracker = async () => {
@@ -72,6 +98,7 @@ export function useHandTracking(): UseHandTrackingResult {
     error,
     gestures,
     videoRef,
+    canvasRef,
     start,
     stop,
   };

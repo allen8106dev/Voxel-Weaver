@@ -9,6 +9,7 @@ export interface HandLandmarks {
 export interface HandTrackingResult {
   leftHand: NormalizedLandmarkList | null;
   rightHand: NormalizedLandmarkList | null;
+  rawResults?: Results;
 }
 
 export type HandTrackingCallback = (result: HandTrackingResult) => void;
@@ -71,7 +72,7 @@ export class HandTracker {
       }
     }
 
-    this.callback({ leftHand, rightHand });
+    this.callback({ leftHand, rightHand, rawResults: results });
   }
 
   start(): void {

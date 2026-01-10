@@ -36,7 +36,7 @@ import { SettingsMenu } from '@/components/SettingsMenu';
 export function VoxelBuilder() {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<VoxelScene | null>(null);
-  const { isInitialized, isRunning, error, gestures, videoRef, start, stop } = useHandTracking();
+  const { isInitialized, isRunning, error, gestures, videoRef, canvasRef, start, stop } = useHandTracking(config.showHandOverlay);
   const [voxelCount, setVoxelCount] = useState(1);
   const [isLocked, setIsLocked] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
@@ -168,11 +168,17 @@ export function VoxelBuilder() {
 
       <video
         ref={videoRef}
-        className={`absolute bottom-4 right-4 w-48 h-36 rounded-lg border border-primary/30 glass object-cover transform scale-x-[-1] transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${!config.showHandOverlay ? 'hidden' : ''}`}
+        className={`absolute bottom-4 right-4 w-48 h-36 rounded-lg border border-primary/30 glass object-cover transform scale-x-[-1] transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
         autoPlay
         playsInline
         muted
         data-testid="video-camera-feed"
+      />
+      <canvas
+        ref={canvasRef}
+        className={`absolute bottom-4 right-4 w-48 h-36 pointer-events-none transform scale-x-[-1] transition-opacity duration-300 ${isFullScreen ? 'opacity-0' : 'opacity-100'}`}
+        width={640}
+        height={480}
       />
 
       <div className={`absolute top-4 left-4 glass-strong rounded-xl p-4 max-w-xs transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
