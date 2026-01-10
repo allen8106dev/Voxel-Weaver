@@ -34,7 +34,7 @@ export function VoxelBuilder() {
   const sceneRef = useRef<VoxelScene | null>(null);
   const { isInitialized, isRunning, error, gestures, videoRef, start, stop } = useHandTracking();
   const [voxelCount, setVoxelCount] = useState(1);
-  const [isLocked, setIsLocked] = useState(false);
+  const [lockStage, setLockStage] = useState(0);
   const [showInstructions, setShowInstructions] = useState(true);
   const [webglError, setWebglError] = useState<string | null>(null);
   const [cursorStatus, setCursorStatus] = useState({ hasTarget: false, canPlace: false, canDelete: false });
@@ -87,7 +87,7 @@ export function VoxelBuilder() {
         gestures.left.ringThumbPinch,
         gestures.left.pinkyThumbPinch
       );
-      setIsLocked(scene.isLockedState());
+      setLockStage(scene.getLockStage());
     }
 
     if (gestures.right) {
@@ -245,10 +245,15 @@ export function VoxelBuilder() {
           />
         </div>
 
-        {isLocked && (
+        {lockStage > 0 && (
           <div className="flex items-center gap-3 text-amber-400">
             <Lock className="w-5 h-5" />
-            <span className="font-mono text-sm">LOCKED</span>
+            <span className="font-mono text-sm">
+              {lockStage === 1 && "LOCKED"}
+              {lockStage === 2 && "NO INERTIA"}
+              {lockStage === 3 && "BUILD STOPPED"}
+              {lockStage === 4 && "TOTAL LOCK"}
+            </span>
           </div>
         )}
         {cursorStatus.hasTarget && (
