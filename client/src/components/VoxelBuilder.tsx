@@ -201,6 +201,15 @@ export function VoxelBuilder() {
             onConfigChange={handleConfigChange}
           />
           <Button
+            onClick={() => setShowInstructions(!showInstructions)}
+            variant="outline"
+            className="glass border-primary/30 hover:border-primary/60 text-primary"
+            size="icon"
+            title="Toggle Help"
+          >
+            <Info className="w-5 h-5" />
+          </Button>
+          <Button
             onClick={() => setIsFullScreen(!isFullScreen)}
             variant="outline"
             className="glass border-primary/30 hover:border-primary/60 text-primary"
@@ -233,16 +242,6 @@ export function VoxelBuilder() {
               Stop Tracking
             </Button>
           )}
-
-          <Button
-            onClick={() => setShowInstructions(!showInstructions)}
-            variant="outline"
-            className="glass border-muted-foreground/30"
-            data-testid="button-toggle-instructions"
-          >
-            <Info className="w-4 h-4 mr-2" />
-            {showInstructions ? 'Hide' : 'Show'} Help
-          </Button>
         </div>
       </div>
 
