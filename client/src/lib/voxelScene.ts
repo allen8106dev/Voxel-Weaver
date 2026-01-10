@@ -275,8 +275,9 @@ export class VoxelScene {
         // Vertical hand movement (Y) -> Rotate around camera's horizontal axis
         
         // We accumulate these deltas.
+        // Inverting deltaY so pinch up (positive Y delta) rolls forward
         this.state.rotationVelocity.x = deltaX * 10;
-        this.state.rotationVelocity.y = deltaY * 10;
+        this.state.rotationVelocity.y = -deltaY * 10;
       }
       this.lastPalmPosition = palmPosition.clone();
     } else {
