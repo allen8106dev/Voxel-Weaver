@@ -42,12 +42,12 @@ export function VoxelBuilder() {
   const [showInstructions, setShowInstructions] = useState(true);
   const [webglError, setWebglError] = useState<string | null>(null);
   const [cursorStatus, setCursorStatus] = useState({ hasTarget: false, canPlace: false, canDelete: false });
-  const [sensitivity, setSensitivity] = useState(1.5);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [config, setConfig] = useState({
     leftHandEnabled: true,
     rightHandEnabled: true,
     showHandOverlay: true,
+    sensitivity: 1.5,
   });
   
   const lastGestureRef = useRef<GestureDebounce>({
@@ -148,16 +148,14 @@ export function VoxelBuilder() {
     // Implement actual save logic here
   };
 
-  const handleConfigChange = (key: string, value: boolean) => {
-    setConfig(prev => ({ ...prev, [key]: value }));
-  };
-
-  const handleSensitivityChange = (value: number[]) => {
-    const newValue = value[0];
-    setSensitivity(newValue);
-    if (sceneRef.current) {
-      sceneRef.current.setSensitivity(newValue * 2);
-    }
+  const handleConfigChange = (key: string, value: any) => {
+    setConfig(prev => {
+      const newConfig = { ...prev, [key]: value };
+      if (key === 'sensitivity' && sceneRef.current) {
+        sceneRef.current.setSensitivity(value * 2);
+      }
+      return newConfig;
+    });
   };
 
   return (
@@ -249,23 +247,6 @@ export function VoxelBuilder() {
           </span>
         </div>
         
-        <div className="space-y-2 pt-2 border-t border-primary/20">
-          <div className="flex items-center gap-2">
-            <Gauge className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Sensitivity</span>
-            <span className="text-xs font-mono text-primary ml-auto">{sensitivity.toFixed(1)}x</span>
-          </div>
-          <Slider
-            value={[sensitivity]}
-            onValueChange={handleSensitivityChange}
-            min={1}
-            max={10}
-            step={0.1}
-            className="w-32"
-            data-testid="slider-sensitivity"
-          />
-        </div>
-
         {isLocked && (
           <div className="flex items-center gap-3 text-amber-400">
             <Lock className="w-5 h-5" />

@@ -8,11 +8,13 @@ import {
   User,
   Settings2,
   Eye,
-  EyeOff
+  EyeOff,
+  Gauge
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import {
   Sheet,
   SheetContent,
@@ -31,8 +33,9 @@ interface SettingsMenuProps {
     leftHandEnabled: boolean;
     rightHandEnabled: boolean;
     showHandOverlay: boolean;
+    sensitivity: number;
   };
-  onConfigChange: (key: string, value: boolean) => void;
+  onConfigChange: (key: string, value: any) => void;
 }
 
 export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }: SettingsMenuProps) {
@@ -52,7 +55,7 @@ export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }
           <SheetTitle className="text-primary font-display text-2xl">Settings</SheetTitle>
         </SheetHeader>
         
-        <div className="py-6 space-y-8">
+        <div className="py-6 space-y-8 h-[calc(100vh-120px)] overflow-y-auto pr-2">
           {/* File Operations */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-primary/80">
@@ -84,7 +87,25 @@ export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }
               <h3 className="text-sm font-semibold uppercase tracking-wider">Configurations</h3>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Gauge className="w-4 h-4 text-muted-foreground" />
+                    <Label>Sensitivity</Label>
+                  </div>
+                  <span className="text-xs font-mono text-primary">{config.sensitivity.toFixed(1)}x</span>
+                </div>
+                <Slider
+                  value={[config.sensitivity]}
+                  onValueChange={(val) => onConfigChange('sensitivity', val[0])}
+                  min={1}
+                  max={10}
+                  step={0.1}
+                  className="w-full"
+                />
+              </div>
+
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Left Hand Functions</Label>
