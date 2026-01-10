@@ -234,10 +234,10 @@ export class VoxelScene {
 
     // Dynamic rotation pivot system
     this.worldGroup.position.set(0, 0, 0);
-    // Note: We don't reset rotation here anymore as we want to keep the one calculated above
     this.worldGroup.updateMatrixWorld();
 
     // 1. Translate so structureCenter is at origin
+    // This allows rotating around the exact centroid, even if it's inside a block.
     this.worldGroup.position.sub(this.state.structureCenter);
     
     // 2. The worldGroup.quaternion is already set above to the correct screen-space orientation.
