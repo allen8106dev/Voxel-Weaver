@@ -20,7 +20,9 @@ import {
   AlertTriangle,
   Gauge,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 
