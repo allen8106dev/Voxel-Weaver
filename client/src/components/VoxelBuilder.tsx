@@ -38,7 +38,7 @@ export function VoxelBuilder() {
     leftHandEnabled: true,
     rightHandEnabled: true,
     showHandOverlay: true,
-    sensitivity: 1.5,
+    sensitivity: 5.0,
   });
   const [voxelCount, setVoxelCount] = useState(1);
   const [isLocked, setIsLocked] = useState(false);
