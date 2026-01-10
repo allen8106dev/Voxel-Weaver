@@ -18,7 +18,6 @@ import {
   Minus,
   ExternalLink,
   AlertTriangle,
-  Gauge,
   Maximize2,
   Minimize2,
   Eye,
@@ -26,14 +25,13 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { Slider } from '@/components/ui/slider';
+
+import { SettingsMenu } from '@/components/SettingsMenu';
 
 interface GestureDebounce {
   rightIndexPinch: boolean;
   rightMiddlePinch: boolean;
 }
-
-import { SettingsMenu } from '@/components/SettingsMenu';
 
 export function VoxelBuilder() {
   const [config, setConfig] = useState({
@@ -41,6 +39,18 @@ export function VoxelBuilder() {
     rightHandEnabled: true,
     showHandOverlay: true,
     sensitivity: 5.0,
+    left: {
+      rotate: true,
+      zoomIn: true,
+      zoomOut: true,
+      lock: true
+    },
+    right: {
+      cycleBlocks: true,
+      cycleSurfaces: true,
+      place: true,
+      delete: true
+    }
   });
   const [voxelCount, setVoxelCount] = useState(1);
   const [isLocked, setIsLocked] = useState(false);
@@ -97,10 +107,10 @@ export function VoxelBuilder() {
     if (gestures.left && config.leftHandEnabled) {
       scene.updateLeftHand(
         gestures.left.palmPosition,
-        gestures.left.indexThumbPinch,
-        gestures.left.middleThumbPinch,
-        gestures.left.ringThumbPinch,
-        gestures.left.pinkyThumbPinch
+        config.left.rotate && gestures.left.indexThumbPinch,
+        config.left.zoomIn && gestures.left.middleThumbPinch,
+        config.left.zoomOut && gestures.left.ringThumbPinch,
+        config.left.lock && gestures.left.pinkyThumbPinch
       );
       setIsLocked(scene.isLockedState());
     }
@@ -108,17 +118,18 @@ export function VoxelBuilder() {
     if (gestures.right && config.rightHandEnabled) {
       const status = scene.updateCursor(
         gestures.right.palmPosition,
-        gestures.right.ringThumbPinch
+        config.right.cycleBlocks && gestures.right.ringThumbPinch,
+        config.right.cycleSurfaces && gestures.right.pinkyThumbPinch
       );
       setCursorStatus(status);
 
-      if (gestures.right.indexThumbPinch && !lastGesture.rightIndexPinch) {
+      if (config.right.place && gestures.right.indexThumbPinch && !lastGesture.rightIndexPinch) {
         if (status.canPlace && scene.placeCube()) {
           setVoxelCount(scene.getVoxelCount());
         }
       }
 
-      if (gestures.right.middleThumbPinch && !lastGesture.rightMiddlePinch) {
+      if (config.right.delete && gestures.right.middleThumbPinch && !lastGesture.rightMiddlePinch) {
         if (status.canDelete && scene.deleteCube()) {
           setVoxelCount(scene.getVoxelCount());
         }
@@ -145,12 +156,10 @@ export function VoxelBuilder() {
 
   const handleOpen = () => {
     console.log('Open project');
-    // Implement actual file open logic here
   };
 
   const handleSave = () => {
     console.log('Save project');
-    // Implement actual save logic here
   };
 
   const handleConfigChange = (key: string, value: any) => {
@@ -270,9 +279,6 @@ export function VoxelBuilder() {
             {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </Button>
         </div>
-
-        <div className={`flex flex-col gap-2 transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-        </div>
       </div>
 
       <div className={`absolute bottom-4 left-4 glass-strong rounded-xl p-4 space-y-3 transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
@@ -340,7 +346,7 @@ export function VoxelBuilder() {
                     <Hand className="w-3 h-3" /> Move Hand → Highlight Block
                   </li>
                   <li className="flex items-center gap-2">
-                    <Hand className="w-3 h-3" /> Thumb + Ring → Cycle surface (unconnected only)
+                    <Hand className="w-3 h-3" /> Thumb + Ring → Cycle surfaces
                   </li>
                   <li className="flex items-center gap-2">
                     <Plus className="w-3 h-3 text-green-400" /> Thumb + Index → Place cube

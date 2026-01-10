@@ -4,12 +4,15 @@ import {
   FileUp, 
   Save, 
   RotateCcw, 
-  X,
-  User,
   Settings2,
-  Eye,
-  EyeOff,
-  Gauge
+  Gauge,
+  RotateCw,
+  ZoomIn,
+  ZoomOut,
+  Lock,
+  Hand,
+  Plus,
+  Minus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -34,6 +37,18 @@ interface SettingsMenuProps {
     rightHandEnabled: boolean;
     showHandOverlay: boolean;
     sensitivity: number;
+    left: {
+      rotate: boolean;
+      zoomIn: boolean;
+      zoomOut: boolean;
+      lock: boolean;
+    };
+    right: {
+      cycleBlocks: boolean;
+      cycleSurfaces: boolean;
+      place: boolean;
+      delete: boolean;
+    };
   };
   onConfigChange: (key: string, value: any) => void;
 }
@@ -45,6 +60,10 @@ export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }
     { id: 'file', label: 'File', icon: FileUp },
     { id: 'config', label: 'Configurations', icon: Settings2 },
   ];
+
+  const updateHandConfig = (hand: 'left' | 'right', feature: string, value: boolean) => {
+    onConfigChange(hand, { ...config[hand], [feature]: value });
+  };
 
   return (
     <Sheet>
@@ -141,26 +160,124 @@ export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }
                       />
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Left Hand Functions</Label>
-                        <p className="text-xs text-muted-foreground">View & Zoom control</p>
+                    <Separator className="bg-primary/10" />
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Hand className="w-4 h-4 text-primary" />
+                          <Label className="font-bold">Left Hand (View)</Label>
+                        </div>
+                        <Switch 
+                          checked={config.leftHandEnabled}
+                          onCheckedChange={(val) => onConfigChange('leftHandEnabled', val)}
+                        />
                       </div>
-                      <Switch 
-                        checked={config.leftHandEnabled}
-                        onCheckedChange={(val) => onConfigChange('leftHandEnabled', val)}
-                      />
+                      
+                      {config.leftHandEnabled && (
+                        <div className="grid gap-3 pl-6 border-l border-primary/10">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <RotateCw className="w-3 h-3 text-muted-foreground" />
+                              <Label className="text-xs">Rotation</Label>
+                            </div>
+                            <Switch 
+                              checked={config.left.rotate}
+                              onCheckedChange={(val) => updateHandConfig('left', 'rotate', val)}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <ZoomIn className="w-3 h-3 text-muted-foreground" />
+                              <Label className="text-xs">Zoom In</Label>
+                            </div>
+                            <Switch 
+                              checked={config.left.zoomIn}
+                              onCheckedChange={(val) => updateHandConfig('left', 'zoomIn', val)}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <ZoomOut className="w-3 h-3 text-muted-foreground" />
+                              <Label className="text-xs">Zoom Out</Label>
+                            </div>
+                            <Switch 
+                              checked={config.left.zoomOut}
+                              onCheckedChange={(val) => updateHandConfig('left', 'zoomOut', val)}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Lock className="w-3 h-3 text-muted-foreground" />
+                              <Label className="text-xs">Lock View</Label>
+                            </div>
+                            <Switch 
+                              checked={config.left.lock}
+                              onCheckedChange={(val) => updateHandConfig('left', 'lock', val)}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Right Hand Functions</Label>
-                        <p className="text-xs text-muted-foreground">Building & Selection</p>
+                    <Separator className="bg-primary/10" />
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Hand className="w-4 h-4 text-secondary" />
+                          <Label className="font-bold">Right Hand (Build)</Label>
+                        </div>
+                        <Switch 
+                          checked={config.rightHandEnabled}
+                          onCheckedChange={(val) => onConfigChange('rightHandEnabled', val)}
+                        />
                       </div>
-                      <Switch 
-                        checked={config.rightHandEnabled}
-                        onCheckedChange={(val) => onConfigChange('rightHandEnabled', val)}
-                      />
+
+                      {config.rightHandEnabled && (
+                        <div className="grid gap-3 pl-6 border-l border-secondary/10">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Hand className="w-3 h-3 text-muted-foreground" />
+                              <Label className="text-xs">Cycle Blocks</Label>
+                            </div>
+                            <Switch 
+                              checked={config.right.cycleBlocks}
+                              onCheckedChange={(val) => updateHandConfig('right', 'cycleBlocks', val)}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Hand className="w-3 h-3 text-muted-foreground" />
+                              <Label className="text-xs">Cycle Surfaces</Label>
+                            </div>
+                            <Switch 
+                              checked={config.right.cycleSurfaces}
+                              onCheckedChange={(val) => updateHandConfig('right', 'cycleSurfaces', val)}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Plus className="w-3 h-3 text-green-400" />
+                              <Label className="text-xs">Place Cube</Label>
+                            </div>
+                            <Switch 
+                              checked={config.right.place}
+                              onCheckedChange={(val) => updateHandConfig('right', 'place', val)}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Minus className="w-3 h-3 text-red-400" />
+                              <Label className="text-xs">Delete Cube</Label>
+                            </div>
+                            <Switch 
+                              checked={config.right.delete}
+                              onCheckedChange={(val) => updateHandConfig('right', 'delete', val)}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
