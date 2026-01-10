@@ -204,7 +204,6 @@ export class VoxelScene {
       
       this.state.worldRotation.y += this.state.rotationVelocity.x * 0.01;
       this.state.worldRotation.x += this.state.rotationVelocity.y * 0.01;
-      this.state.worldRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.state.worldRotation.x));
       
       this.state.zoom += this.state.zoomVelocity;
       this.state.zoom = Math.max(3, Math.min(20, this.state.zoom));
