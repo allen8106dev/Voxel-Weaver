@@ -236,11 +236,20 @@ export class VoxelScene {
     this.worldGroup.position.set(0, 0, 0);
     this.worldGroup.updateMatrixWorld();
 
-    // 1. Translate so structureCenter is at origin
-    // This allows rotating around the exact centroid, even if it's inside a block.
-    this.worldGroup.position.sub(this.state.structureCenter);
+    // 1. Pivot Logic:
+    // To rotate around a specific point (structureCenter) without it revolving:
+    // We must ensure the rotation is applied in the local space of the point.
+    // However, since we are rotating the entire worldGroup, we must:
+    // a. Move the meshes so the centroid is at (0,0,0) locally.
+    // b. Apply the rotation to worldGroup.
     
+    this.state.voxels.forEach((voxel) => {
+      voxel.mesh.position.copy(voxel.position).sub(this.state.structureCenter);
+    });
+
     // 2. The worldGroup.quaternion is already set above to the correct screen-space orientation.
+    // 3. Since meshes are centered around (0,0,0) relative to worldGroup, 
+    // rotating worldGroup will rotate them around their collective center.
     
     this.camera.position.z = this.state.zoom;
 
