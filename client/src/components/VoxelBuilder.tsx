@@ -40,10 +40,16 @@ export function VoxelBuilder() {
     showHandOverlay: true,
     sensitivity: 1.5,
   });
+  const [voxelCount, setVoxelCount] = useState(1);
+  const [isLocked, setIsLocked] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(true);
+  const [webglError, setWebglError] = useState<string | null>(null);
+  const [cursorStatus, setCursorStatus] = useState({ hasTarget: false, canPlace: false, canDelete: false });
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<VoxelScene | null>(null);
   const { isInitialized, isRunning, error, gestures, videoRef, canvasRef, start, stop } = useHandTracking(config.showHandOverlay);
-  const [voxelCount, setVoxelCount] = useState(1);
   
   const lastGestureRef = useRef<GestureDebounce>({
     rightIndexPinch: false,
