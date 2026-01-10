@@ -145,7 +145,7 @@ export function VoxelBuilder() {
 
       <div className="absolute top-4 left-4 glass-strong rounded-xl p-4 max-w-xs">
         <h1 className="font-display text-2xl text-primary text-glow-subtle mb-1" data-testid="text-title">
-          VoxelCraft
+          VoxelCraft v1
         </h1>
         <p className="text-sm text-muted-foreground">
           Hand-Tracking 3D Builder
