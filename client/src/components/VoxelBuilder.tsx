@@ -215,24 +215,22 @@ export function VoxelBuilder() {
           </Button>
         </div>
 
-        {showCamera && (
-          <div className="relative w-48 h-36 rounded-lg overflow-hidden border border-primary/30 glass">
-            <video
-              ref={videoRef}
-              className="w-full h-full object-cover transform scale-x-[-1]"
-              autoPlay
-              playsInline
-              muted
-              data-testid="video-camera-feed"
-            />
-            <canvas
-              ref={canvasRef}
-              className="absolute inset-0 w-full h-full pointer-events-none transform scale-x-[-1]"
-              width={640}
-              height={480}
-            />
-          </div>
-        )}
+        <div className={`relative rounded-lg overflow-hidden border border-primary/30 glass transition-all duration-200 ${showCamera ? 'w-48 h-36 opacity-100' : 'w-0 h-0 opacity-0 border-0'}`}>
+          <video
+            ref={videoRef}
+            className="w-48 h-36 object-cover transform scale-x-[-1]"
+            autoPlay
+            playsInline
+            muted
+            data-testid="video-camera-feed"
+          />
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full pointer-events-none transform scale-x-[-1]"
+            width={640}
+            height={480}
+          />
+        </div>
       </div>
 
       <div className={`absolute top-4 left-4 glass-strong rounded-xl p-4 max-w-xs transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
