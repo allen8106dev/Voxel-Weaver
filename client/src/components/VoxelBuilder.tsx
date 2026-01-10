@@ -42,7 +42,7 @@ export function VoxelBuilder() {
   });
   const [voxelCount, setVoxelCount] = useState(1);
   const [isLocked, setIsLocked] = useState(false);
-  const [showInstructions, setShowInstructions] = useState(true);
+  const [showInstructions, setShowInstructions] = useState(false);
   const [webglError, setWebglError] = useState<string | null>(null);
   const [cursorStatus, setCursorStatus] = useState({ hasTarget: false, canPlace: false, canDelete: false });
   const [isFullScreen, setIsFullScreen] = useState(false);

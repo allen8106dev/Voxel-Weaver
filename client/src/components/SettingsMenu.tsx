@@ -44,7 +44,6 @@ export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }
   const menuItems = [
     { id: 'file', label: 'File', icon: FileUp },
     { id: 'config', label: 'Configurations', icon: Settings2 },
-    { id: 'vis', label: 'Visualization', icon: User },
   ];
 
   return (
@@ -163,28 +162,6 @@ export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }
                         onCheckedChange={(val) => onConfigChange('rightHandEnabled', val)}
                       />
                     </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'vis' && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-right-2">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-primary/80">
-                    <User className="w-4 h-4" />
-                    <h3 className="text-sm font-semibold uppercase tracking-wider">Visualization</h3>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label>Hand Overlay</Label>
-                      <p className="text-xs text-muted-foreground">Show skeleton on camera</p>
-                    </div>
-                    <Switch 
-                      checked={config.showHandOverlay}
-                      onCheckedChange={(val) => onConfigChange('showHandOverlay', val)}
-                    />
                   </div>
                 </div>
               </div>
