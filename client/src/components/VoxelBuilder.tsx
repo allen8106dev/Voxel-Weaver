@@ -171,23 +171,45 @@ export function VoxelBuilder() {
 
       <div className={`absolute bottom-4 right-4 flex flex-col items-end gap-2 transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <div className="flex gap-2">
+          {!isRunning ? (
+            <Button
+              onClick={start}
+              disabled={!isInitialized}
+              variant="outline"
+              size="sm"
+              className="glass h-8 px-2 text-[10px] uppercase tracking-wider border-primary/30 hover:border-primary/60 text-primary"
+            >
+              <Camera className="w-3 h-3 mr-1" />
+              Start
+            </Button>
+          ) : (
+            <Button
+              onClick={stop}
+              variant="destructive"
+              size="sm"
+              className="glass h-8 px-2 text-[10px] uppercase tracking-wider"
+            >
+              <CameraOff className="w-3 h-3 mr-1" />
+              Stop
+            </Button>
+          )}
           <Button
             onClick={() => handleConfigChange('showHandOverlay', !config.showHandOverlay)}
             variant="outline"
-            size="sm"
-            className={`glass h-8 px-2 text-[10px] uppercase tracking-wider transition-colors ${config.showHandOverlay ? 'border-primary/60 text-primary' : 'border-primary/20 text-muted-foreground'}`}
+            size="icon"
+            className={`glass h-8 w-8 transition-colors ${config.showHandOverlay ? 'border-primary/60 text-primary' : 'border-primary/20 text-muted-foreground'}`}
+            title="Toggle Overlay"
           >
-            {config.showHandOverlay ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
-            Overlay
+            {config.showHandOverlay ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
           </Button>
           <Button
             onClick={() => setShowCamera(!showCamera)}
             variant="outline"
-            size="sm"
-            className="glass h-8 px-2 text-[10px] uppercase tracking-wider border-primary/20 text-muted-foreground hover:text-primary"
+            size="icon"
+            className="glass h-8 w-8 border-primary/20 text-muted-foreground hover:text-primary"
+            title={showCamera ? 'Hide Feed' : 'Show Feed'}
           >
-            {showCamera ? <CameraOff className="w-3 h-3 mr-1" /> : <Camera className="w-3 h-3 mr-1" />}
-            {showCamera ? 'Hide Feed' : 'Show Feed'}
+            {showCamera ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
           </Button>
         </div>
 
@@ -250,27 +272,6 @@ export function VoxelBuilder() {
         </div>
 
         <div className={`flex flex-col gap-2 transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-          {!isRunning ? (
-            <Button
-              onClick={start}
-              disabled={!isInitialized}
-              className="glass border-primary/30 hover:border-primary/60 text-primary"
-              data-testid="button-start-tracking"
-            >
-              <Camera className="w-4 h-4 mr-2" />
-              {isInitialized ? 'Start Tracking' : 'Initializing...'}
-            </Button>
-          ) : (
-            <Button
-              onClick={stop}
-              variant="destructive"
-              className="glass"
-              data-testid="button-stop-tracking"
-            >
-              <CameraOff className="w-4 h-4 mr-2" />
-              Stop Tracking
-            </Button>
-          )}
         </div>
       </div>
 
@@ -299,10 +300,6 @@ export function VoxelBuilder() {
           <span className="text-xs text-muted-foreground">Left</span>
           <div className={`w-3 h-3 rounded-full ml-2 ${gestures.right ? 'bg-secondary animate-pulse' : 'bg-muted'}`} />
           <span className="text-xs text-muted-foreground">Right</span>
-        </div>
-        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-primary/10">
-          <Eye className={`w-3 h-3 ${config.showHandOverlay ? 'text-primary' : 'text-muted-foreground'}`} />
-          <span className="text-[10px] text-muted-foreground uppercase tracking-tighter">Overlay {config.showHandOverlay ? 'On' : 'Off'}</span>
         </div>
       </div>
 
