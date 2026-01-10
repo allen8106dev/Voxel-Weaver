@@ -22,7 +22,9 @@ import {
   Maximize2,
   Minimize2,
   Eye,
-  EyeOff
+  EyeOff,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 
@@ -176,21 +178,21 @@ export function VoxelBuilder() {
               onClick={start}
               disabled={!isInitialized}
               variant="outline"
-              size="sm"
-              className="glass h-8 px-2 text-[10px] uppercase tracking-wider border-primary/30 hover:border-primary/60 text-primary"
+              size="icon"
+              className="glass h-8 w-8 border-primary/30 hover:border-primary/60 text-primary"
+              title="Start Tracking"
             >
-              <Camera className="w-3 h-3 mr-1" />
-              Start
+              <Camera className="w-4 h-4" />
             </Button>
           ) : (
             <Button
               onClick={stop}
               variant="destructive"
-              size="sm"
-              className="glass h-8 px-2 text-[10px] uppercase tracking-wider"
+              size="icon"
+              className="glass h-8 w-8"
+              title="Stop Tracking"
             >
-              <CameraOff className="w-3 h-3 mr-1" />
-              Stop
+              <CameraOff className="w-4 h-4" />
             </Button>
           )}
           <Button
@@ -209,7 +211,7 @@ export function VoxelBuilder() {
             className="glass h-8 w-8 border-primary/20 text-muted-foreground hover:text-primary"
             title={showCamera ? 'Hide Feed' : 'Show Feed'}
           >
-            {showCamera ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+            {showCamera ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
           </Button>
         </div>
 
