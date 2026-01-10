@@ -131,12 +131,12 @@ export function VoxelBuilder() {
     processGestures(gestures);
   }, [gestures, processGestures]);
 
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     if (sceneRef.current) {
       sceneRef.current.clearAll();
       setVoxelCount(1);
     }
-  };
+  }, []);
 
   const handleOpen = () => {
     console.log('Open project');
