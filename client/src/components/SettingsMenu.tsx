@@ -39,6 +39,14 @@ interface SettingsMenuProps {
 }
 
 export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }: SettingsMenuProps) {
+  const [activeTab, setActiveTab] = useState('file');
+
+  const menuItems = [
+    { id: 'file', label: 'File', icon: FileUp },
+    { id: 'config', label: 'Configurations', icon: Settings2 },
+    { id: 'vis', label: 'Visualization', icon: User },
+  ];
+
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -50,109 +58,141 @@ export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }
           <Settings className="w-5 h-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent className="glass-strong border-l border-primary/20 text-foreground">
-        <SheetHeader>
+      <SheetContent className="glass-strong border-l border-primary/20 text-foreground flex flex-col p-0 w-full sm:max-w-md">
+        <SheetHeader className="p-6 pb-2">
           <SheetTitle className="text-primary font-display text-2xl">Settings</SheetTitle>
         </SheetHeader>
         
-        <div className="py-6 space-y-8 h-[calc(100vh-120px)] overflow-y-auto pr-2">
-          {/* File Operations */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-primary/80">
-              <FileUp className="w-4 h-4" />
-              <h3 className="text-sm font-semibold uppercase tracking-wider">File</h3>
-            </div>
-            <div className="grid grid-cols-1 gap-2">
-              <Button onClick={onOpen} variant="outline" className="justify-start glass border-primary/20">
-                <FileUp className="w-4 h-4 mr-2" />
-                Open Project
-              </Button>
-              <Button onClick={onSave} variant="outline" className="justify-start glass border-primary/20">
-                <Save className="w-4 h-4 mr-2" />
-                Save As...
-              </Button>
-              <Button onClick={onReset} variant="outline" className="justify-start glass border-destructive/20 text-destructive hover:text-destructive">
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Reset Scene
-              </Button>
-            </div>
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar Menu */}
+          <div className="w-16 sm:w-20 border-r border-primary/10 flex flex-col py-4 bg-black/20">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`flex flex-col items-center justify-center py-4 transition-colors relative ${
+                    activeTab === item.id 
+                      ? 'text-primary bg-primary/5' 
+                      : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
+                  }`}
+                >
+                  <Icon className="w-5 h-5 mb-1" />
+                  <span className="text-[10px] uppercase tracking-tighter font-medium">{item.label.split(' ')[0]}</span>
+                  {activeTab === item.id && (
+                    <div className="absolute right-0 top-0 bottom-0 w-0.5 bg-primary" />
+                  )}
+                </button>
+              );
+            })}
           </div>
 
-          <Separator className="bg-primary/10" />
-
-          {/* Configurations */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-primary/80">
-              <Settings2 className="w-4 h-4" />
-              <h3 className="text-sm font-semibold uppercase tracking-wider">Configurations</h3>
-            </div>
-            
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Gauge className="w-4 h-4 text-muted-foreground" />
-                    <Label>Sensitivity</Label>
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {activeTab === 'file' && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-2">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-primary/80">
+                    <FileUp className="w-4 h-4" />
+                    <h3 className="text-sm font-semibold uppercase tracking-wider">File Operations</h3>
                   </div>
-                  <span className="text-xs font-mono text-primary">{config.sensitivity.toFixed(1)}x</span>
+                  <div className="grid grid-cols-1 gap-2">
+                    <Button onClick={onOpen} variant="outline" className="justify-start glass border-primary/20">
+                      <FileUp className="w-4 h-4 mr-2" />
+                      Open Project
+                    </Button>
+                    <Button onClick={onSave} variant="outline" className="justify-start glass border-primary/20">
+                      <Save className="w-4 h-4 mr-2" />
+                      Save As...
+                    </Button>
+                    <Button onClick={onReset} variant="outline" className="justify-start glass border-destructive/20 text-destructive hover:text-destructive">
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Reset Scene
+                    </Button>
+                  </div>
                 </div>
-                <Slider
-                  value={[config.sensitivity]}
-                  onValueChange={(val) => onConfigChange('sensitivity', val[0])}
-                  min={1}
-                  max={10}
-                  step={0.1}
-                  className="w-full"
-                />
               </div>
+            )}
 
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Left Hand Functions</Label>
-                  <p className="text-xs text-muted-foreground">View & Zoom control</p>
+            {activeTab === 'config' && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-2">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-primary/80">
+                    <Settings2 className="w-4 h-4" />
+                    <h3 className="text-sm font-semibold uppercase tracking-wider">Control Configuration</h3>
+                  </div>
+                  
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Gauge className="w-4 h-4 text-muted-foreground" />
+                          <Label>Sensitivity</Label>
+                        </div>
+                        <span className="text-xs font-mono text-primary">{config.sensitivity.toFixed(1)}x</span>
+                      </div>
+                      <Slider
+                        value={[config.sensitivity]}
+                        onValueChange={(val) => onConfigChange('sensitivity', val[0])}
+                        min={1}
+                        max={10}
+                        step={0.1}
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Left Hand Functions</Label>
+                        <p className="text-xs text-muted-foreground">View & Zoom control</p>
+                      </div>
+                      <Switch 
+                        checked={config.leftHandEnabled}
+                        onCheckedChange={(val) => onConfigChange('leftHandEnabled', val)}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Right Hand Functions</Label>
+                        <p className="text-xs text-muted-foreground">Building & Selection</p>
+                      </div>
+                      <Switch 
+                        checked={config.rightHandEnabled}
+                        onCheckedChange={(val) => onConfigChange('rightHandEnabled', val)}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <Switch 
-                  checked={config.leftHandEnabled}
-                  onCheckedChange={(val) => onConfigChange('leftHandEnabled', val)}
-                />
               </div>
+            )}
 
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Right Hand Functions</Label>
-                  <p className="text-xs text-muted-foreground">Building & Selection</p>
+            {activeTab === 'vis' && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-2">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-primary/80">
+                    <User className="w-4 h-4" />
+                    <h3 className="text-sm font-semibold uppercase tracking-wider">Visualization</h3>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Hand Overlay</Label>
+                      <p className="text-xs text-muted-foreground">Show skeleton on camera</p>
+                    </div>
+                    <Switch 
+                      checked={config.showHandOverlay}
+                      onCheckedChange={(val) => onConfigChange('showHandOverlay', val)}
+                    />
+                  </div>
                 </div>
-                <Switch 
-                  checked={config.rightHandEnabled}
-                  onCheckedChange={(val) => onConfigChange('rightHandEnabled', val)}
-                />
               </div>
-            </div>
-          </div>
-
-          <Separator className="bg-primary/10" />
-
-          {/* Visualization */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-primary/80">
-              <User className="w-4 h-4" />
-              <h3 className="text-sm font-semibold uppercase tracking-wider">Visualization</h3>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Hand Overlay</Label>
-                <p className="text-xs text-muted-foreground">Show skeleton on camera</p>
-              </div>
-              <Switch 
-                checked={config.showHandOverlay}
-                onCheckedChange={(val) => onConfigChange('showHandOverlay', val)}
-              />
-            </div>
+            )}
           </div>
         </div>
 
-        <SheetFooter className="absolute bottom-6 left-6 right-6">
+        <SheetFooter className="p-6 pt-2">
           <p className="text-[10px] text-center text-muted-foreground/50 w-full uppercase tracking-widest">
             VoxelCraft v1.0.0
           </p>
