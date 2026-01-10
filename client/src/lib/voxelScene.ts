@@ -202,6 +202,12 @@ export class VoxelScene {
         this.state.rotationVelocity.y *= INERTIA_DAMPING;
       }
       
+      // Screen-space rotation logic:
+      // Horizontal hand movement (X) -> Rotate around world Y axis
+      // Vertical hand movement (Y) -> Rotate around world X axis
+      
+      // To keep it intuitive, we apply the rotation in a way that feels "camera-relative"
+      // effectively mapping screen deltas to global rotation increments.
       this.state.worldRotation.y += this.state.rotationVelocity.x * 0.01;
       this.state.worldRotation.x += this.state.rotationVelocity.y * 0.01;
       
@@ -251,8 +257,13 @@ export class VoxelScene {
     if (indexPinch) {
       this.state.isRotating = true;
       if (this.lastPalmPosition) {
+        // Calculate deltas in screen space (palm position is normalized 0-1 usually)
         const deltaX = (palmPosition.x - this.lastPalmPosition.x) * this.sensitivity;
         const deltaY = (palmPosition.y - this.lastPalmPosition.y) * this.sensitivity;
+        
+        // We want rotation to feel consistent regardless of current orientation.
+        // Screen-space X movement should always rotate around world UP axis (Y)
+        // Screen-space Y movement should always rotate around world RIGHT axis (X)
         this.state.rotationVelocity.x = deltaX * 10;
         this.state.rotationVelocity.y = -deltaY * 10;
       }
