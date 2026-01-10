@@ -1,8 +1,35 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { HandTracker, HandTrackingResult } from '@/lib/handTracking';
 import { HandGestures, processHandGestures } from '@/lib/gestureRecognition';
-import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
-import { HAND_CONNECTIONS } from '@mediapipe/hands';
+import { Hands, HAND_CONNECTIONS, Results, NormalizedLandmarkList } from '@mediapipe/hands';
+
+// Helper to draw landmarks and connectors manually if drawing_utils is missing
+function drawHand(ctx: CanvasRenderingContext2D, landmarks: NormalizedLandmarkList) {
+  const width = ctx.canvas.width;
+  const height = ctx.canvas.height;
+
+  ctx.strokeStyle = '#00FF00';
+  ctx.lineWidth = 5;
+  ctx.lineJoin = 'round';
+
+  // Draw connections
+  HAND_CONNECTIONS.forEach(([startIdx, endIdx]) => {
+    const start = landmarks[startIdx];
+    const end = landmarks[endIdx];
+    ctx.beginPath();
+    ctx.moveTo(start.x * width, start.y * height);
+    ctx.lineTo(end.x * width, end.y * height);
+    ctx.stroke();
+  });
+
+  // Draw landmarks
+  ctx.fillStyle = '#FF0000';
+  landmarks.forEach((landmark) => {
+    ctx.beginPath();
+    ctx.arc(landmark.x * width, landmark.y * height, 3, 0, 2 * Math.PI);
+    ctx.fill();
+  });
+}
 
 export interface UseHandTrackingResult {
   isInitialized: boolean;
@@ -36,14 +63,7 @@ export function useHandTracking(showOverlay: boolean = true): UseHandTrackingRes
         
         if (showOverlay && result.rawResults && result.rawResults.multiHandLandmarks) {
           for (const landmarks of result.rawResults.multiHandLandmarks) {
-            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
-              color: '#00FF00',
-              lineWidth: 5,
-            });
-            drawLandmarks(canvasCtx, landmarks, {
-              color: '#FF0000',
-              lineWidth: 2,
-            });
+            drawHand(canvasCtx, landmarks);
           }
         }
         canvasCtx.restore();
