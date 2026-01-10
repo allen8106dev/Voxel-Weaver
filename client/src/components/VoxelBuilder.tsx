@@ -29,6 +29,8 @@ interface GestureDebounce {
   rightMiddlePinch: boolean;
 }
 
+import { SettingsMenu } from '@/components/SettingsMenu';
+
 export function VoxelBuilder() {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<VoxelScene | null>(null);
@@ -40,6 +42,11 @@ export function VoxelBuilder() {
   const [cursorStatus, setCursorStatus] = useState({ hasTarget: false, canPlace: false, canDelete: false });
   const [sensitivity, setSensitivity] = useState(1.5);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [config, setConfig] = useState({
+    leftHandEnabled: true,
+    rightHandEnabled: true,
+    showHandOverlay: true,
+  });
   
   const lastGestureRef = useRef<GestureDebounce>({
     rightIndexPinch: false,
@@ -80,7 +87,7 @@ export function VoxelBuilder() {
     const scene = sceneRef.current;
     const lastGesture = lastGestureRef.current;
 
-    if (gestures.left) {
+    if (gestures.left && config.leftHandEnabled) {
       scene.updateLeftHand(
         gestures.left.palmPosition,
         gestures.left.indexThumbPinch,
@@ -91,7 +98,7 @@ export function VoxelBuilder() {
       setIsLocked(scene.isLockedState());
     }
 
-    if (gestures.right) {
+    if (gestures.right && config.rightHandEnabled) {
       const status = scene.updateCursor(
         gestures.right.palmPosition,
         gestures.right.ringThumbPinch
@@ -116,7 +123,7 @@ export function VoxelBuilder() {
       scene.hideCursor();
       setCursorStatus({ hasTarget: false, canPlace: false, canDelete: false });
     }
-  }, []);
+  }, [config]);
 
   useEffect(() => {
     processGestures(gestures);
@@ -127,6 +134,20 @@ export function VoxelBuilder() {
       sceneRef.current.clearAll();
       setVoxelCount(1);
     }
+  };
+
+  const handleOpen = () => {
+    console.log('Open project');
+    // Implement actual file open logic here
+  };
+
+  const handleSave = () => {
+    console.log('Save project');
+    // Implement actual save logic here
+  };
+
+  const handleConfigChange = (key: string, value: boolean) => {
+    setConfig(prev => ({ ...prev, [key]: value }));
   };
 
   const handleSensitivityChange = (value: number[]) => {
@@ -147,7 +168,7 @@ export function VoxelBuilder() {
 
       <video
         ref={videoRef}
-        className={`absolute bottom-4 right-4 w-48 h-36 rounded-lg border border-primary/30 glass object-cover transform scale-x-[-1] transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+        className={`absolute bottom-4 right-4 w-48 h-36 rounded-lg border border-primary/30 glass object-cover transform scale-x-[-1] transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${!config.showHandOverlay ? 'hidden' : ''}`}
         autoPlay
         playsInline
         muted
@@ -164,14 +185,24 @@ export function VoxelBuilder() {
       </div>
 
       <div className="absolute top-4 right-4 flex flex-col gap-2 z-50">
-        <Button
-          onClick={() => setIsFullScreen(!isFullScreen)}
-          variant="outline"
-          className="glass border-primary/30 hover:border-primary/60 text-primary"
-          title="Toggle Fullscreen (F)"
-        >
-          {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-        </Button>
+        <div className="flex gap-2">
+          <SettingsMenu 
+            onOpen={handleOpen}
+            onSave={handleSave}
+            onReset={handleClear}
+            config={config}
+            onConfigChange={handleConfigChange}
+          />
+          <Button
+            onClick={() => setIsFullScreen(!isFullScreen)}
+            variant="outline"
+            className="glass border-primary/30 hover:border-primary/60 text-primary"
+            size="icon"
+            title="Toggle Fullscreen (F)"
+          >
+            {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </Button>
+        </div>
 
         <div className={`flex flex-col gap-2 transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
           {!isRunning ? (
@@ -195,16 +226,6 @@ export function VoxelBuilder() {
               Stop Tracking
             </Button>
           )}
-
-          <Button
-            onClick={handleClear}
-            variant="outline"
-            className="glass border-destructive/30 hover:border-destructive/60 text-destructive"
-            data-testid="button-clear-all"
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Reset
-          </Button>
 
           <Button
             onClick={() => setShowInstructions(!showInstructions)}
@@ -260,6 +281,10 @@ export function VoxelBuilder() {
           <span className="text-xs text-muted-foreground">Left</span>
           <div className={`w-3 h-3 rounded-full ml-2 ${gestures.right ? 'bg-secondary animate-pulse' : 'bg-muted'}`} />
           <span className="text-xs text-muted-foreground">Right</span>
+        </div>
+        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-primary/10">
+          <Eye className={`w-3 h-3 ${config.showHandOverlay ? 'text-primary' : 'text-muted-foreground'}`} />
+          <span className="text-[10px] text-muted-foreground uppercase tracking-tighter">Overlay {config.showHandOverlay ? 'On' : 'Off'}</span>
         </div>
       </div>
 
