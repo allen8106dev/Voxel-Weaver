@@ -35,15 +35,32 @@ export function VoxelBuilder() {
   const { isInitialized, isRunning, error, gestures, videoRef, start, stop } = useHandTracking();
   const [voxelCount, setVoxelCount] = useState(1);
   const [lockStage, setLockStage] = useState(0);
+  const [showLockLabel, setShowLockLabel] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
   const [webglError, setWebglError] = useState<string | null>(null);
   const [cursorStatus, setCursorStatus] = useState({ hasTarget: false, canPlace: false, canDelete: false });
   const [sensitivity, setSensitivity] = useState(1.5);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  
   const lastGestureRef = useRef<GestureDebounce>({
     rightIndexPinch: false,
     rightMiddlePinch: false,
   });
+
+  const lockTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const updateLockStage = useCallback((stage: number) => {
+    setLockStage(stage);
+    if (stage > 0) {
+      setShowLockLabel(true);
+      if (lockTimeoutRef.current) clearTimeout(lockTimeoutRef.current);
+      lockTimeoutRef.current = setTimeout(() => {
+        setShowLockLabel(false);
+      }, 1000);
+    } else {
+      setShowLockLabel(false);
+    }
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -87,7 +104,7 @@ export function VoxelBuilder() {
         gestures.left.ringThumbPinch,
         gestures.left.pinkyThumbPinch
       );
-      setLockStage(scene.getLockStage());
+      updateLockStage(scene.getLockStage());
     }
 
     if (gestures.right) {
@@ -245,7 +262,7 @@ export function VoxelBuilder() {
           />
         </div>
 
-        {lockStage > 0 && (
+        {showLockLabel && lockStage > 0 && (
           <div className="flex items-center gap-3 text-amber-400">
             <Lock className="w-5 h-5" />
             <span className="font-mono text-sm">
