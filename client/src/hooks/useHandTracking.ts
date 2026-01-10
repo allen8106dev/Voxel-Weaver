@@ -58,9 +58,11 @@ export function useHandTracking(showOverlay: boolean = true): UseHandTrackingRes
     if (canvasRef.current) {
       const canvasCtx = canvasRef.current.getContext('2d');
       if (canvasCtx) {
+        // Always clear the canvas first
         canvasCtx.save();
         canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
         
+        // Only draw if overlay is enabled and we have results
         if (showOverlay && result.rawResults && result.rawResults.multiHandLandmarks) {
           for (const landmarks of result.rawResults.multiHandLandmarks) {
             drawHand(canvasCtx, landmarks);
