@@ -149,6 +149,18 @@ export class VoxelScene {
     this.addVoxelAt(pos);
   }
 
+  private calculateCentroid(): THREE.Vector3 {
+    const centroid = new THREE.Vector3(0, 0, 0);
+    const count = this.state.voxels.size;
+    if (count === 0) return centroid;
+
+    this.state.voxels.forEach((voxel) => {
+      centroid.add(voxel.position);
+    });
+    centroid.divideScalar(count);
+    return centroid;
+  }
+
   private addVoxelAt(position: THREE.Vector3): Voxel | null {
     const key = positionToKey(position);
     if (this.state.voxels.has(key)) return null;
@@ -166,13 +178,9 @@ export class VoxelScene {
       mesh,
     };
 
-    // Update centroid: (center * count + P) / (count + 1)
-    const count = this.state.voxels.size;
-    this.state.structureCenter.multiplyScalar(count)
-      .add(position)
-      .divideScalar(count + 1);
-
     this.state.voxels.set(key, voxel);
+    this.state.structureCenter.copy(this.calculateCentroid());
+    
     return voxel;
   }
 
@@ -409,23 +417,13 @@ export class VoxelScene {
     const voxel = this.state.voxels.get(this.state.targetVoxelId);
     if (!voxel) return false;
 
-    const position = voxel.position;
-    const count = this.state.voxels.size;
-
-    // Update centroid on removal: (center * count - P) / (count - 1)
-    if (count > 1) {
-      this.state.structureCenter.multiplyScalar(count)
-        .sub(position)
-        .divideScalar(count - 1);
-    } else {
-      this.state.structureCenter.set(0, 0, 0);
-    }
-
     this.worldGroup.remove(voxel.mesh);
     voxel.mesh.geometry.dispose();
     (voxel.mesh.material as THREE.Material[]).forEach(m => m.dispose());
     this.state.voxels.delete(this.state.targetVoxelId);
     this.state.targetVoxelId = null;
+
+    this.state.structureCenter.copy(this.calculateCentroid());
 
     return true;
   }
