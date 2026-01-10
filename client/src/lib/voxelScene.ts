@@ -205,14 +205,7 @@ export class VoxelScene {
       // Screen-space rotation logic:
       // Horizontal hand movement (X) -> Rotate around world Y axis
       // Vertical hand movement (Y) -> Rotate around world X axis
-      
-      // To keep it intuitive and prevent reversal when flipped:
-      // If the object's local 'up' is pointing down (pitch > 90deg or < -90deg),
-      // we flip the yaw increment to maintain screen-space consistency.
-      const cosPitch = Math.cos(this.state.worldRotation.x);
-      const directionMultiplier = cosPitch >= 0 ? 1 : -1;
-
-      this.state.worldRotation.y += this.state.rotationVelocity.x * 0.01 * directionMultiplier;
+      this.state.worldRotation.y += this.state.rotationVelocity.x * 0.01;
       this.state.worldRotation.x += this.state.rotationVelocity.y * 0.01;
       
       this.state.zoom += this.state.zoomVelocity;
@@ -228,23 +221,17 @@ export class VoxelScene {
     // 1. Translate so structureCenter is at origin
     this.worldGroup.position.sub(this.state.structureCenter);
     
-    // 2. Apply rotation. To prevent "reversal" when flipped, 
-    // we ensure the Y rotation (yaw) is applied first or relative to the current tilt.
-    // However, the most robust way to avoid inversion is to check the 'up' vector.
-    // If the object is 'upside down' (cos(x) < 0), we should flip the Y rotation delta.
+    // 2. Apply rotation.
+    // We want the rotation to ALWAYS be camera-relative (screen-space).
+    // Euler angles (order 'XYZ' by default) can cause gimbal lock and 
+    // inconsistent behavior when one axis is rotated.
+    // To ensure screen-space X moves around world Y and screen-space Y moves around world X:
+    const finalRotation = new THREE.Quaternion();
+    const qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.state.worldRotation.y);
+    const qX = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), this.state.worldRotation.x);
     
-    // But since the user wants consistent screen-space control:
-    this.worldGroup.rotation.copy(this.state.worldRotation);
-    
-    // Check if we are "upside down" relative to the camera
-    const upVector = new THREE.Vector3(0, 1, 0).applyEuler(this.state.worldRotation);
-    if (upVector.y < 0) {
-      // If we're upside down, we don't necessarily want to flip the Euler Y increment 
-      // because Euler angles are absolute. 
-      // Actually, for Euler Y, it's always around world Y.
-      // The "reversal" feeling usually comes from the fact that left-to-right on screen 
-      // feels like it should rotate "that way" but the math says "this way" when inverted.
-    }
+    finalRotation.multiplyQuaternions(qX, qY);
+    this.worldGroup.quaternion.copy(finalRotation);
     
     this.camera.position.z = this.state.zoom;
 
