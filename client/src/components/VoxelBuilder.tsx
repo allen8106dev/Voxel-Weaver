@@ -18,7 +18,9 @@ import {
   Minus,
   ExternalLink,
   AlertTriangle,
-  Gauge
+  Gauge,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 
@@ -37,10 +39,21 @@ export function VoxelBuilder() {
   const [webglError, setWebglError] = useState<string | null>(null);
   const [cursorStatus, setCursorStatus] = useState({ hasTarget: false, canPlace: false, canDelete: false });
   const [sensitivity, setSensitivity] = useState(1.5);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const lastGestureRef = useRef<GestureDebounce>({
     rightIndexPinch: false,
     rightMiddlePinch: false,
   });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'f') {
+        setIsFullScreen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     if (!containerRef.current) return;
