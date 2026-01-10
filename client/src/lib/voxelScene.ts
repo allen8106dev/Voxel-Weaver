@@ -203,11 +203,30 @@ export class VoxelScene {
       }
       
       // Screen-space rotation logic:
-      // Horizontal hand movement (X) -> Rotate around world Y axis
-      // Vertical hand movement (Y) -> Rotate around world X axis
-      this.state.worldRotation.y += this.state.rotationVelocity.x * 0.01;
-      this.state.worldRotation.x += this.state.rotationVelocity.y * 0.01;
+      // We want to apply increments relative to the current view.
+      // A small horizontal increment should rotate around the world Y-axis.
+      // A small vertical increment should rotate around the camera's local X-axis.
       
+      const yaw = this.state.rotationVelocity.x * 0.01;
+      const pitch = this.state.rotationVelocity.y * 0.01;
+
+      // Update the world group's orientation incrementally to keep it screen-space consistent
+      const currentQuat = this.worldGroup.quaternion.clone();
+      
+      const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+      const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitch);
+      
+      // Combine: yaw is world-relative, pitch is screen-relative (which is camera local X)
+      // Since camera is always looking at origin from +Z, camera X is world X.
+      // Applying both incrementally ensures it never feels "reversed" or "different"
+      currentQuat.premultiply(qYaw);
+      currentQuat.premultiply(qPitch);
+      
+      this.worldGroup.quaternion.copy(currentQuat);
+      
+      // We still update these to keep state in sync if needed, though we use incremental above
+      this.state.worldRotation.setFromQuaternion(this.worldGroup.quaternion);
+
       this.state.zoom += this.state.zoomVelocity;
       this.state.zoom = Math.max(3, Math.min(20, this.state.zoom));
       this.state.zoomVelocity *= INERTIA_DAMPING;
@@ -215,32 +234,13 @@ export class VoxelScene {
 
     // Dynamic rotation pivot system
     this.worldGroup.position.set(0, 0, 0);
-    this.worldGroup.rotation.set(0, 0, 0);
+    // Note: We don't reset rotation here anymore as we want to keep the one calculated above
     this.worldGroup.updateMatrixWorld();
 
     // 1. Translate so structureCenter is at origin
     this.worldGroup.position.sub(this.state.structureCenter);
     
-    // 2. Apply rotation.
-    // To ensure rotation always feels screen-space/camera-relative:
-    // Horizontal movement (Y rotation) should be around world UP.
-    // Vertical movement (X rotation) should be around camera RIGHT.
-    
-    const finalRotation = new THREE.Quaternion();
-    
-    // We want to apply vertical rotation (X) relative to the current camera view,
-    // and horizontal rotation (Y) relative to world up.
-    // The most robust way to achieve this "trackball" style rotation is:
-    // Global Y rotation * Global X rotation (when the camera is fixed at Z)
-    // However, to ensure vertical always feels right even after horizontal spinning:
-    
-    const qX = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), this.state.worldRotation.x);
-    const qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.state.worldRotation.y);
-    
-    // Order: Y * X means "Rotate around world Y, then rotate around the resulting local X"
-    // This keeps vertical rotation aligned with the screen's horizontal axis.
-    finalRotation.multiplyQuaternions(qY, qX);
-    this.worldGroup.quaternion.copy(finalRotation);
+    // 2. The worldGroup.quaternion is already set above to the correct screen-space orientation.
     
     this.camera.position.z = this.state.zoom;
 
@@ -271,11 +271,12 @@ export class VoxelScene {
         const deltaX = (palmPosition.x - this.lastPalmPosition.x) * this.sensitivity;
         const deltaY = (palmPosition.y - this.lastPalmPosition.y) * this.sensitivity;
         
-        // We want rotation to feel consistent regardless of current orientation.
-        // Screen-space X movement should always rotate around world UP axis (Y)
-        // Screen-space Y movement should always rotate around world RIGHT axis (X)
+        // Horizontal hand movement (X) -> Rotate around world Y axis
+        // Vertical hand movement (Y) -> Rotate around camera's horizontal axis
+        
+        // We accumulate these deltas.
         this.state.rotationVelocity.x = deltaX * 10;
-        this.state.rotationVelocity.y = -deltaY * 10;
+        this.state.rotationVelocity.y = deltaY * 10;
       }
       this.lastPalmPosition = palmPosition.clone();
     } else {
