@@ -183,10 +183,11 @@ export class VoxelScene {
     // Stage 2-4 disable inertia
     // Stage 4 disables rotation (handled in updateLeftHand)
     
-    if (this.state.lockStage === 1) {
-      // Stage 1: Semi-lock (stops everything in place, i can resume)
-      // Allow rotation and zoom, just stop current momentum on entry
-    } else if (this.state.lockStage === 0 || this.state.lockStage === 3) {
+    if (this.state.lockStage === 2) {
+      // Stage 2: No Inertia (can rotate and build, but no inertia)
+      this.state.rotationVelocity.set(0, 0);
+      this.state.zoomVelocity = 0;
+    } else if (this.state.lockStage === 1) {
       if (!this.state.isRotating) {
         this.state.rotationVelocity.x *= INERTIA_DAMPING;
         this.state.rotationVelocity.y *= INERTIA_DAMPING;
@@ -196,14 +197,14 @@ export class VoxelScene {
       this.state.rotationVelocity.set(0, 0);
     }
     
-    // Update rotation only if not in stage 1, 2, 4 (Stage 3 allows rotation with inertia)
-    if (this.state.lockStage === 0 || this.state.lockStage === 1 || this.state.lockStage === 3) {
+    // Update rotation only if not in stage 1, 4 (Stage 2 and 3 allow rotation, but Stage 2 has no inertia momentum)
+    if (this.state.lockStage === 0 || this.state.lockStage === 1 || this.state.lockStage === 2 || this.state.lockStage === 3) {
       this.state.worldRotation.y += this.state.rotationVelocity.x * 0.01;
       this.state.worldRotation.x += this.state.rotationVelocity.y * 0.01;
       this.state.worldRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.state.worldRotation.x));
     }
 
-    if (this.state.lockStage === 0 || this.state.lockStage === 1) {
+    if (this.state.lockStage === 0 || this.state.lockStage === 1 || this.state.lockStage === 2) {
       this.state.zoom += this.state.zoomVelocity;
       this.state.zoom = Math.max(3, Math.min(20, this.state.zoom));
       this.state.zoomVelocity *= INERTIA_DAMPING;
@@ -248,8 +249,8 @@ export class VoxelScene {
 
     if (this.state.lockStage === 4) return; // Stage 4 stops everything including rotation
 
-    // Rotation allowed in 0, 1 and 3
-    if (this.state.lockStage === 0 || this.state.lockStage === 1 || this.state.lockStage === 3) {
+    // Rotation allowed in 0, 1, 2 and 3
+    if (this.state.lockStage === 0 || this.state.lockStage === 1 || this.state.lockStage === 2 || this.state.lockStage === 3) {
       if (indexPinch) {
         this.state.isRotating = true;
         if (this.lastPalmPosition) {
@@ -265,8 +266,8 @@ export class VoxelScene {
       }
     }
 
-    // Zoom only in 0 and 1
-    if (this.state.lockStage === 0 || this.state.lockStage === 1) {
+    // Zoom only in 0, 1 and 2
+    if (this.state.lockStage === 0 || this.state.lockStage === 1 || this.state.lockStage === 2) {
       if (middlePinch) {
         this.state.zoomVelocity = -ZOOM_SPEED;
       } else if (ringPinch) {
