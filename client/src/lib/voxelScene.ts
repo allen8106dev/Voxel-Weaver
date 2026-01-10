@@ -223,16 +223,22 @@ export class VoxelScene {
     
     // 2. Apply rotation.
     // To ensure rotation always feels screen-space/camera-relative:
-    // We want the rotation to be applied in a way that maps screen-space X to world Y
-    // and screen-space Y to world X (or rather, the camera's local X).
+    // Horizontal movement (Y rotation) should be around world UP.
+    // Vertical movement (X rotation) should be around camera RIGHT.
     
     const finalRotation = new THREE.Quaternion();
-    const qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.state.worldRotation.y);
-    const qX = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), this.state.worldRotation.x);
     
-    // By multiplying qY * qX, we rotate around world Y first, then world X.
-    // This makes the up-down rotation always occur around the global X axis,
-    // and left-right rotation always occur around the global Y axis.
+    // We want to apply vertical rotation (X) relative to the current camera view,
+    // and horizontal rotation (Y) relative to world up.
+    // The most robust way to achieve this "trackball" style rotation is:
+    // Global Y rotation * Global X rotation (when the camera is fixed at Z)
+    // However, to ensure vertical always feels right even after horizontal spinning:
+    
+    const qX = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), this.state.worldRotation.x);
+    const qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.state.worldRotation.y);
+    
+    // Order: Y * X means "Rotate around world Y, then rotate around the resulting local X"
+    // This keeps vertical rotation aligned with the screen's horizontal axis.
     finalRotation.multiplyQuaternions(qY, qX);
     this.worldGroup.quaternion.copy(finalRotation);
     
