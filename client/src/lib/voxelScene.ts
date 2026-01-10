@@ -188,6 +188,11 @@ export class VoxelScene {
       this.state.rotationVelocity.set(0, 0);
       this.state.zoomVelocity = 0;
     } else if (this.state.lockStage === 0 || this.state.lockStage === 3) {
+      if (!this.state.isRotating) {
+        this.state.rotationVelocity.x *= INERTIA_DAMPING;
+        this.state.rotationVelocity.y *= INERTIA_DAMPING;
+      }
+    } else {
       // Stage 2 & 4: Stop Inertia
       this.state.rotationVelocity.set(0, 0);
     }
