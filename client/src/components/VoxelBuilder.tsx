@@ -145,7 +145,7 @@ export function VoxelBuilder() {
 
   useEffect(() => {
     processGestures(gestures);
-  }, [gestures, processGestures]);
+  }, [gestures]);
 
   const handleClear = useCallback(() => {
     if (sceneRef.current) {
