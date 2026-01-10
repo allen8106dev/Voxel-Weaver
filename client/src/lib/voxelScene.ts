@@ -183,19 +183,11 @@ export class VoxelScene {
     // Stage 2-4 disable inertia
     // Stage 4 disables rotation (handled in updateLeftHand)
     
-    if (this.state.lockStage === 0 || this.state.lockStage === 3) {
-      if (!this.state.isRotating) {
-        this.state.rotationVelocity.x *= INERTIA_DAMPING;
-        this.state.rotationVelocity.y *= INERTIA_DAMPING;
-      }
-    } else if (this.state.lockStage === 1) {
-      // Stage 1: Locked (original behavior: no rotation/zoom updates but inertia might still be there if already moving? 
-      // User says "1st pinch is to lock as it already is"
-      if (!this.state.isRotating) {
-        this.state.rotationVelocity.x *= INERTIA_DAMPING;
-        this.state.rotationVelocity.y *= INERTIA_DAMPING;
-      }
-    } else {
+    if (this.state.lockStage === 1) {
+      // Stage 1: Semi-lock (stops everything in place, can resume)
+      this.state.rotationVelocity.set(0, 0);
+      this.state.zoomVelocity = 0;
+    } else if (this.state.lockStage === 0 || this.state.lockStage === 3) {
       // Stage 2 & 4: Stop Inertia
       this.state.rotationVelocity.set(0, 0);
     }
@@ -276,7 +268,7 @@ export class VoxelScene {
   }
 
   updateCursor(palmPosition: THREE.Vector3, ringPinch: boolean): { hasTarget: boolean; canPlace: boolean; canDelete: boolean } {
-    if (this.state.lockStage === 3 || this.state.lockStage === 4) {
+    if (this.state.lockStage === 1 || this.state.lockStage === 3 || this.state.lockStage === 4) {
       this.state.targetVoxelId = null;
       this.state.targetPosition = null;
       this.state.targetFace = null;

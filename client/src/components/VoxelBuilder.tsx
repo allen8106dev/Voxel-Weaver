@@ -249,7 +249,7 @@ export function VoxelBuilder() {
           <div className="flex items-center gap-3 text-amber-400">
             <Lock className="w-5 h-5" />
             <span className="font-mono text-sm">
-              {lockStage === 1 && "LOCKED"}
+              {lockStage === 1 && "SEMI-LOCKED"}
               {lockStage === 2 && "NO INERTIA"}
               {lockStage === 3 && "BUILD STOPPED"}
               {lockStage === 4 && "TOTAL LOCK"}
