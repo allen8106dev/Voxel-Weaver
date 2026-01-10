@@ -224,17 +224,16 @@ export class VoxelScene {
     // 2. Apply rotation.
     // To ensure rotation always feels screen-space/camera-relative:
     // We want the rotation to be applied in a way that maps screen-space X to world Y
-    // and screen-space Y to the current "horizontal" axis relative to the camera.
+    // and screen-space Y to world X (or rather, the camera's local X).
     
+    const finalRotation = new THREE.Quaternion();
     const qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.state.worldRotation.y);
     const qX = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), this.state.worldRotation.x);
     
-    // By multiplying qY * qX, the horizontal rotation (Y) is applied in world space,
-    // and the vertical rotation (X) is applied relative to that world-space orientation.
-    // This keeps left-right consistent.
-    // To keep up-down consistent too, we use this order which prevents the "flip" reversal
-    // for both axes when using absolute Euler-like tracking.
-    const finalRotation = new THREE.Quaternion().multiplyQuaternions(qY, qX);
+    // By multiplying qY * qX, we rotate around world Y first, then world X.
+    // This makes the up-down rotation always occur around the global X axis,
+    // and left-right rotation always occur around the global Y axis.
+    finalRotation.multiplyQuaternions(qY, qX);
     this.worldGroup.quaternion.copy(finalRotation);
     
     this.camera.position.z = this.state.zoom;
