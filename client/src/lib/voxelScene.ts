@@ -15,7 +15,7 @@ export interface VoxelSceneState {
   rotationVelocity: THREE.Vector2;
   zoom: number;
   zoomVelocity: number;
-  lockStage: number; // 0: Normal, 1: Lock, 2: Stop Inertia, 3: Stop build/select, 4: Stop rotating, 5: Normal
+  isLocked: boolean;
   isRotating: boolean;
 }
 
@@ -120,7 +120,7 @@ export class VoxelScene {
       rotationVelocity: new THREE.Vector2(0, 0),
       zoom: 8,
       zoomVelocity: 0,
-      lockStage: 0,
+      isLocked: false,
       isRotating: false,
     };
 
@@ -179,32 +179,16 @@ export class VoxelScene {
   private animate(): void {
     this.animationId = requestAnimationFrame(() => this.animate());
     
-    // Stage 1-4 disable zoom
-    // Stage 2-4 disable inertia
-    // Stage 4 disables rotation (handled in updateLeftHand)
-    
-    if (this.state.lockStage === 2) {
-      // Stage 2: No Inertia (can rotate and build, but no inertia)
-      this.state.rotationVelocity.set(0, 0);
-      this.state.zoomVelocity = 0;
-    } else if (this.state.lockStage === 1) {
+    if (!this.state.isLocked) {
       if (!this.state.isRotating) {
         this.state.rotationVelocity.x *= INERTIA_DAMPING;
         this.state.rotationVelocity.y *= INERTIA_DAMPING;
       }
-    } else {
-      // Stage 2 & 4: Stop Inertia
-      this.state.rotationVelocity.set(0, 0);
-    }
-    
-    // Update rotation only if not in stage 1, 4 (Stage 2 and 3 allow rotation, but Stage 2 has no inertia momentum)
-    if (this.state.lockStage === 0 || this.state.lockStage === 1 || this.state.lockStage === 2 || this.state.lockStage === 3) {
+      
       this.state.worldRotation.y += this.state.rotationVelocity.x * 0.01;
       this.state.worldRotation.x += this.state.rotationVelocity.y * 0.01;
       this.state.worldRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.state.worldRotation.x));
-    }
-
-    if (this.state.lockStage === 0 || this.state.lockStage === 1 || this.state.lockStage === 2) {
+      
       this.state.zoom += this.state.zoomVelocity;
       this.state.zoom = Math.max(3, Math.min(20, this.state.zoom));
       this.state.zoomVelocity *= INERTIA_DAMPING;
@@ -216,9 +200,6 @@ export class VoxelScene {
     this.renderer.render(this.scene, this.camera);
   }
 
-  private lastPinkyPinchLeft = false;
-  private consecutiveLockPinch = false;
-
   updateLeftHand(
     palmPosition: THREE.Vector3,
     indexPinch: boolean,
@@ -226,64 +207,38 @@ export class VoxelScene {
     ringPinch: boolean,
     pinkyPinch: boolean
   ): void {
-    const otherPinch = indexPinch || middlePinch || ringPinch;
+    if (pinkyPinch) {
+      this.state.isLocked = true;
+      this.state.rotationVelocity.set(0, 0);
+      this.state.zoomVelocity = 0;
+      this.lastPalmPosition = null;
+      return;
+    }
     
-    if (pinkyPinch && !this.lastPinkyPinchLeft) {
-      if (this.consecutiveLockPinch) {
-        this.state.lockStage = (this.state.lockStage + 1) % 5;
-      } else {
-        this.state.lockStage = 1;
-        this.consecutiveLockPinch = true;
-        
-        // Semi-lock activation: stop momentum
-        this.state.rotationVelocity.set(0, 0);
-        this.state.zoomVelocity = 0;
+    this.state.isLocked = false;
+
+    if (indexPinch) {
+      this.state.isRotating = true;
+      if (this.lastPalmPosition) {
+        const deltaX = (palmPosition.x - this.lastPalmPosition.x) * this.sensitivity;
+        const deltaY = (palmPosition.y - this.lastPalmPosition.y) * this.sensitivity;
+        this.state.rotationVelocity.x = deltaX * 10;
+        this.state.rotationVelocity.y = -deltaY * 10;
       }
+      this.lastPalmPosition = palmPosition.clone();
+    } else {
+      this.state.isRotating = false;
+      this.lastPalmPosition = null;
     }
 
-    if (otherPinch) {
-      this.consecutiveLockPinch = false;
-    }
-
-    this.lastPinkyPinchLeft = pinkyPinch;
-
-    if (this.state.lockStage === 4) return; // Stage 4 stops everything including rotation
-
-    // Rotation allowed in 0, 1, 2 and 3
-    if (this.state.lockStage === 0 || this.state.lockStage === 1 || this.state.lockStage === 2 || this.state.lockStage === 3) {
-      if (indexPinch) {
-        this.state.isRotating = true;
-        if (this.lastPalmPosition) {
-          const deltaX = (palmPosition.x - this.lastPalmPosition.x) * this.sensitivity;
-          const deltaY = (palmPosition.y - this.lastPalmPosition.y) * this.sensitivity;
-          this.state.rotationVelocity.x = deltaX * 10;
-          this.state.rotationVelocity.y = -deltaY * 10;
-        }
-        this.lastPalmPosition = palmPosition.clone();
-      } else {
-        this.state.isRotating = false;
-        this.lastPalmPosition = null;
-      }
-    }
-
-    // Zoom only in 0, 1 and 2
-    if (this.state.lockStage === 0 || this.state.lockStage === 1 || this.state.lockStage === 2) {
-      if (middlePinch) {
-        this.state.zoomVelocity = -ZOOM_SPEED;
-      } else if (ringPinch) {
-        this.state.zoomVelocity = ZOOM_SPEED;
-      }
+    if (middlePinch) {
+      this.state.zoomVelocity = -ZOOM_SPEED;
+    } else if (ringPinch) {
+      this.state.zoomVelocity = ZOOM_SPEED;
     }
   }
 
   updateCursor(palmPosition: THREE.Vector3, ringPinch: boolean): { hasTarget: boolean; canPlace: boolean; canDelete: boolean } {
-    if (this.state.lockStage === 3 || this.state.lockStage === 4) {
-      this.state.targetVoxelId = null;
-      this.state.targetPosition = null;
-      this.state.targetFace = null;
-      this.clearAllHighlights();
-      return { hasTarget: false, canPlace: false, canDelete: false };
-    }
     const cursorWorldPos = new THREE.Vector3(
       palmPosition.x * 12,
       palmPosition.y * 12,
@@ -447,8 +402,8 @@ export class VoxelScene {
     return this.state.zoom;
   }
 
-  getLockStage(): number {
-    return this.state.lockStage;
+  isLockedState(): boolean {
+    return this.state.isLocked;
   }
 
   setSensitivity(value: number): void {

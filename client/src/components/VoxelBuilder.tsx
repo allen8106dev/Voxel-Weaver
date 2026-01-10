@@ -34,8 +34,7 @@ export function VoxelBuilder() {
   const sceneRef = useRef<VoxelScene | null>(null);
   const { isInitialized, isRunning, error, gestures, videoRef, start, stop } = useHandTracking();
   const [voxelCount, setVoxelCount] = useState(1);
-  const [lockStage, setLockStage] = useState(0);
-  const [showLockLabel, setShowLockLabel] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
   const [webglError, setWebglError] = useState<string | null>(null);
   const [cursorStatus, setCursorStatus] = useState({ hasTarget: false, canPlace: false, canDelete: false });
@@ -46,21 +45,6 @@ export function VoxelBuilder() {
     rightIndexPinch: false,
     rightMiddlePinch: false,
   });
-
-  const lockTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const updateLockStage = useCallback((stage: number) => {
-    setLockStage(stage);
-    if (stage > 0) {
-      setShowLockLabel(true);
-      if (lockTimeoutRef.current) clearTimeout(lockTimeoutRef.current);
-      lockTimeoutRef.current = setTimeout(() => {
-        setShowLockLabel(false);
-      }, 1000);
-    } else {
-      setShowLockLabel(false);
-    }
-  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -104,7 +88,7 @@ export function VoxelBuilder() {
         gestures.left.ringThumbPinch,
         gestures.left.pinkyThumbPinch
       );
-      updateLockStage(scene.getLockStage());
+      setIsLocked(scene.isLockedState());
     }
 
     if (gestures.right) {
@@ -149,9 +133,6 @@ export function VoxelBuilder() {
     const newValue = value[0];
     setSensitivity(newValue);
     if (sceneRef.current) {
-      // Map 1-10 range to actual sensitivity values
-      // 5x is the "normal" (old 10x), so divide by 2 or use a multiplier
-      // If user wants 5x to be old 10x, and max 10x to be even faster
       sceneRef.current.setSensitivity(newValue * 2);
     }
   };
@@ -175,7 +156,7 @@ export function VoxelBuilder() {
 
       <div className={`absolute top-4 left-4 glass-strong rounded-xl p-4 max-w-xs transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <h1 className="font-display text-2xl text-primary text-glow-subtle mb-1" data-testid="text-title">
-          VoxelCraft v1
+          VoxelCraft
         </h1>
         <p className="text-sm text-muted-foreground">
           Hand-Tracking 3D Builder
@@ -262,15 +243,10 @@ export function VoxelBuilder() {
           />
         </div>
 
-        {showLockLabel && lockStage > 0 && (
+        {isLocked && (
           <div className="flex items-center gap-3 text-amber-400">
             <Lock className="w-5 h-5" />
-            <span className="font-mono text-sm">
-              {lockStage === 1 && "SEMI-LOCKED"}
-              {lockStage === 2 && "NO INERTIA"}
-              {lockStage === 3 && "BUILD STOPPED"}
-              {lockStage === 4 && "TOTAL LOCK"}
-            </span>
+            <span className="font-mono text-sm">LOCKED</span>
           </div>
         )}
         {cursorStatus.hasTarget && (
