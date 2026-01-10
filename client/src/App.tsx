@@ -8,7 +8,7 @@ import NotFound from "@/pages/not-found";
 
 function AppRouter() {
   return (
-    <Router base={import.meta.env.BASE_URL}>
+    <Router>
       <Switch>
         <Route path="/" component={Home} />
         <Route component={NotFound} />
