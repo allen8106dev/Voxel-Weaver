@@ -184,9 +184,8 @@ export class VoxelScene {
     // Stage 4 disables rotation (handled in updateLeftHand)
     
     if (this.state.lockStage === 1) {
-      // Stage 1: Semi-lock (stops everything in place, can resume)
-      this.state.rotationVelocity.set(0, 0);
-      this.state.zoomVelocity = 0;
+      // Stage 1: Semi-lock (stops everything in place, i can resume)
+      // Allow rotation and zoom, just stop current momentum on entry
     } else if (this.state.lockStage === 0 || this.state.lockStage === 3) {
       if (!this.state.isRotating) {
         this.state.rotationVelocity.x *= INERTIA_DAMPING;
@@ -198,13 +197,13 @@ export class VoxelScene {
     }
     
     // Update rotation only if not in stage 1, 2, 4 (Stage 3 allows rotation with inertia)
-    if (this.state.lockStage === 0 || this.state.lockStage === 3) {
+    if (this.state.lockStage === 0 || this.state.lockStage === 1 || this.state.lockStage === 3) {
       this.state.worldRotation.y += this.state.rotationVelocity.x * 0.01;
       this.state.worldRotation.x += this.state.rotationVelocity.y * 0.01;
       this.state.worldRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.state.worldRotation.x));
     }
 
-    if (this.state.lockStage === 0) {
+    if (this.state.lockStage === 0 || this.state.lockStage === 1) {
       this.state.zoom += this.state.zoomVelocity;
       this.state.zoom = Math.max(3, Math.min(20, this.state.zoom));
       this.state.zoomVelocity *= INERTIA_DAMPING;
@@ -234,6 +233,10 @@ export class VoxelScene {
       } else {
         this.state.lockStage = 1;
         this.consecutiveLockPinch = true;
+        
+        // Semi-lock activation: stop momentum
+        this.state.rotationVelocity.set(0, 0);
+        this.state.zoomVelocity = 0;
       }
     }
 
@@ -245,8 +248,8 @@ export class VoxelScene {
 
     if (this.state.lockStage === 4) return; // Stage 4 stops everything including rotation
 
-    // Rotation allowed in 0 and 3
-    if (this.state.lockStage === 0 || this.state.lockStage === 3) {
+    // Rotation allowed in 0, 1 and 3
+    if (this.state.lockStage === 0 || this.state.lockStage === 1 || this.state.lockStage === 3) {
       if (indexPinch) {
         this.state.isRotating = true;
         if (this.lastPalmPosition) {
@@ -262,8 +265,8 @@ export class VoxelScene {
       }
     }
 
-    // Zoom only in 0
-    if (this.state.lockStage === 0) {
+    // Zoom only in 0 and 1
+    if (this.state.lockStage === 0 || this.state.lockStage === 1) {
       if (middlePinch) {
         this.state.zoomVelocity = -ZOOM_SPEED;
       } else if (ringPinch) {
@@ -273,7 +276,7 @@ export class VoxelScene {
   }
 
   updateCursor(palmPosition: THREE.Vector3, ringPinch: boolean): { hasTarget: boolean; canPlace: boolean; canDelete: boolean } {
-    if (this.state.lockStage === 1 || this.state.lockStage === 3 || this.state.lockStage === 4) {
+    if (this.state.lockStage === 3 || this.state.lockStage === 4) {
       this.state.targetVoxelId = null;
       this.state.targetPosition = null;
       this.state.targetFace = null;
