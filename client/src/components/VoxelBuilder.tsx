@@ -51,6 +51,8 @@ export function VoxelBuilder() {
   const sceneRef = useRef<VoxelScene | null>(null);
   const { isInitialized, isRunning, error, gestures, videoRef, canvasRef, start, stop } = useHandTracking(config.showHandOverlay);
   
+  const [showCamera, setShowCamera] = useState(true);
+
   const lastGestureRef = useRef<GestureDebounce>({
     rightIndexPinch: false,
     rightMiddlePinch: false,
@@ -167,20 +169,47 @@ export function VoxelBuilder() {
         data-testid="canvas-3d-scene"
       />
 
-      <video
-        ref={videoRef}
-        className={`absolute bottom-4 right-4 w-48 h-36 rounded-lg border border-primary/30 glass object-cover transform scale-x-[-1] transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-        autoPlay
-        playsInline
-        muted
-        data-testid="video-camera-feed"
-      />
-      <canvas
-        ref={canvasRef}
-        className={`absolute bottom-4 right-4 w-48 h-36 pointer-events-none transform scale-x-[-1] transition-opacity duration-300 ${isFullScreen ? 'opacity-0' : 'opacity-100'}`}
-        width={640}
-        height={480}
-      />
+      <div className={`absolute bottom-4 right-4 flex flex-col items-end gap-2 transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => handleConfigChange('showHandOverlay', !config.showHandOverlay)}
+            variant="outline"
+            size="sm"
+            className={`glass h-8 px-2 text-[10px] uppercase tracking-wider transition-colors ${config.showHandOverlay ? 'border-primary/60 text-primary' : 'border-primary/20 text-muted-foreground'}`}
+          >
+            {config.showHandOverlay ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
+            Overlay
+          </Button>
+          <Button
+            onClick={() => setShowCamera(!showCamera)}
+            variant="outline"
+            size="sm"
+            className="glass h-8 px-2 text-[10px] uppercase tracking-wider border-primary/20 text-muted-foreground hover:text-primary"
+          >
+            {showCamera ? <CameraOff className="w-3 h-3 mr-1" /> : <Camera className="w-3 h-3 mr-1" />}
+            {showCamera ? 'Hide Feed' : 'Show Feed'}
+          </Button>
+        </div>
+
+        {showCamera && (
+          <div className="relative w-48 h-36 rounded-lg overflow-hidden border border-primary/30 glass">
+            <video
+              ref={videoRef}
+              className="w-full h-full object-cover transform scale-x-[-1]"
+              autoPlay
+              playsInline
+              muted
+              data-testid="video-camera-feed"
+            />
+            <canvas
+              ref={canvasRef}
+              className="absolute inset-0 w-full h-full pointer-events-none transform scale-x-[-1]"
+              width={640}
+              height={480}
+            />
+          </div>
+        )}
+      </div>
 
       <div className={`absolute top-4 left-4 glass-strong rounded-xl p-4 max-w-xs transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <h1 className="font-display text-2xl text-primary text-glow-subtle mb-1" data-testid="text-title">
