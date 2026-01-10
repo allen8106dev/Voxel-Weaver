@@ -140,7 +140,7 @@ export function VoxelBuilder() {
   };
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[#0a0a0f]">
+    <div className={`relative w-full h-screen overflow-hidden bg-[#0a0a0f] ${isFullScreen ? 'fullscreen-mode' : ''}`}>
       <div 
         ref={containerRef} 
         className="absolute inset-0"
@@ -149,14 +149,14 @@ export function VoxelBuilder() {
 
       <video
         ref={videoRef}
-        className="absolute bottom-4 right-4 w-48 h-36 rounded-lg border border-primary/30 glass object-cover transform scale-x-[-1]"
+        className={`absolute bottom-4 right-4 w-48 h-36 rounded-lg border border-primary/30 glass object-cover transform scale-x-[-1] transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
         autoPlay
         playsInline
         muted
         data-testid="video-camera-feed"
       />
 
-      <div className="absolute top-4 left-4 glass-strong rounded-xl p-4 max-w-xs">
+      <div className={`absolute top-4 left-4 glass-strong rounded-xl p-4 max-w-xs transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <h1 className="font-display text-2xl text-primary text-glow-subtle mb-1" data-testid="text-title">
           VoxelCraft v1
         </h1>
@@ -165,51 +165,62 @@ export function VoxelBuilder() {
         </p>
       </div>
 
-      <div className="absolute top-4 right-4 flex flex-col gap-2">
-        {!isRunning ? (
-          <Button
-            onClick={start}
-            disabled={!isInitialized}
-            className="glass border-primary/30 hover:border-primary/60 text-primary"
-            data-testid="button-start-tracking"
-          >
-            <Camera className="w-4 h-4 mr-2" />
-            {isInitialized ? 'Start Tracking' : 'Initializing...'}
-          </Button>
-        ) : (
-          <Button
-            onClick={stop}
-            variant="destructive"
-            className="glass"
-            data-testid="button-stop-tracking"
-          >
-            <CameraOff className="w-4 h-4 mr-2" />
-            Stop Tracking
-          </Button>
-        )}
-
+      <div className="absolute top-4 right-4 flex flex-col gap-2 z-50">
         <Button
-          onClick={handleClear}
+          onClick={() => setIsFullScreen(!isFullScreen)}
           variant="outline"
-          className="glass border-destructive/30 hover:border-destructive/60 text-destructive"
-          data-testid="button-clear-all"
+          className="glass border-primary/30 hover:border-primary/60 text-primary"
+          title="Toggle Fullscreen (F)"
         >
-          <Trash2 className="w-4 h-4 mr-2" />
-          Reset
+          {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
         </Button>
 
-        <Button
-          onClick={() => setShowInstructions(!showInstructions)}
-          variant="outline"
-          className="glass border-muted-foreground/30"
-          data-testid="button-toggle-instructions"
-        >
-          <Info className="w-4 h-4 mr-2" />
-          {showInstructions ? 'Hide' : 'Show'} Help
-        </Button>
+        <div className={`flex flex-col gap-2 transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+          {!isRunning ? (
+            <Button
+              onClick={start}
+              disabled={!isInitialized}
+              className="glass border-primary/30 hover:border-primary/60 text-primary"
+              data-testid="button-start-tracking"
+            >
+              <Camera className="w-4 h-4 mr-2" />
+              {isInitialized ? 'Start Tracking' : 'Initializing...'}
+            </Button>
+          ) : (
+            <Button
+              onClick={stop}
+              variant="destructive"
+              className="glass"
+              data-testid="button-stop-tracking"
+            >
+              <CameraOff className="w-4 h-4 mr-2" />
+              Stop Tracking
+            </Button>
+          )}
+
+          <Button
+            onClick={handleClear}
+            variant="outline"
+            className="glass border-destructive/30 hover:border-destructive/60 text-destructive"
+            data-testid="button-clear-all"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Reset
+          </Button>
+
+          <Button
+            onClick={() => setShowInstructions(!showInstructions)}
+            variant="outline"
+            className="glass border-muted-foreground/30"
+            data-testid="button-toggle-instructions"
+          >
+            <Info className="w-4 h-4 mr-2" />
+            {showInstructions ? 'Hide' : 'Show'} Help
+          </Button>
+        </div>
       </div>
 
-      <div className="absolute bottom-4 left-4 glass-strong rounded-xl p-4 space-y-3">
+      <div className={`absolute bottom-4 left-4 glass-strong rounded-xl p-4 space-y-3 transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <div className="flex items-center gap-3">
           <Box className="w-5 h-5 text-primary" />
           <span className="font-mono text-lg" data-testid="text-voxel-count">
@@ -254,7 +265,7 @@ export function VoxelBuilder() {
         </div>
       </div>
 
-      {showInstructions && (
+      {showInstructions && !isFullScreen && (
         <div className="absolute top-20 left-4 glass-strong rounded-xl p-4 max-w-sm space-y-4" data-testid="panel-instructions">
           <h3 className="font-display text-lg text-primary border-b border-primary/20 pb-2">
             Controls
