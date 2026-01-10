@@ -222,15 +222,17 @@ export class VoxelScene {
     this.worldGroup.position.sub(this.state.structureCenter);
     
     // 2. Apply rotation.
-    // We want the rotation to ALWAYS be camera-relative (screen-space).
-    // Euler angles (order 'XYZ' by default) can cause gimbal lock and 
-    // inconsistent behavior when one axis is rotated.
-    // To ensure screen-space X moves around world Y and screen-space Y moves around world X:
+    // To ensure screen-space X always moves around the camera's Y axis (left-right)
+    // and screen-space Y always moves around the camera's X axis (up-down),
+    // we multiply the quaternions in the order that maps world-space inputs to the object.
     const finalRotation = new THREE.Quaternion();
     const qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.state.worldRotation.y);
     const qX = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), this.state.worldRotation.x);
     
-    finalRotation.multiplyQuaternions(qX, qY);
+    // Changing order to Y * X ensures that the Y rotation (left/right) is applied 
+    // "after" the X rotation relative to the object's local space, or effectively 
+    // keeping the horizontal rotation always around the world-up axis.
+    finalRotation.multiplyQuaternions(qY, qX);
     this.worldGroup.quaternion.copy(finalRotation);
     
     this.camera.position.z = this.state.zoom;
