@@ -206,9 +206,13 @@ export class VoxelScene {
       // Horizontal hand movement (X) -> Rotate around world Y axis
       // Vertical hand movement (Y) -> Rotate around world X axis
       
-      // To keep it intuitive, we apply the rotation in a way that feels "camera-relative"
-      // effectively mapping screen deltas to global rotation increments.
-      this.state.worldRotation.y += this.state.rotationVelocity.x * 0.01;
+      // To keep it intuitive and prevent reversal when flipped:
+      // If the object's local 'up' is pointing down (pitch > 90deg or < -90deg),
+      // we flip the yaw increment to maintain screen-space consistency.
+      const cosPitch = Math.cos(this.state.worldRotation.x);
+      const directionMultiplier = cosPitch >= 0 ? 1 : -1;
+
+      this.state.worldRotation.y += this.state.rotationVelocity.x * 0.01 * directionMultiplier;
       this.state.worldRotation.x += this.state.rotationVelocity.y * 0.01;
       
       this.state.zoom += this.state.zoomVelocity;
@@ -217,20 +221,30 @@ export class VoxelScene {
     }
 
     // Dynamic rotation pivot system
-    // 1. Reset rotation to calculate world position correctly
-    this.worldGroup.rotation.set(0, 0, 0);
     this.worldGroup.position.set(0, 0, 0);
+    this.worldGroup.rotation.set(0, 0, 0);
     this.worldGroup.updateMatrixWorld();
 
-    // 2. Translate so structureCenter is at origin
+    // 1. Translate so structureCenter is at origin
     this.worldGroup.position.sub(this.state.structureCenter);
     
-    // 3. Apply rotation around the origin (which is now our structureCenter)
-    // We use a parent container or matrix manipulation to rotate around pivot
-    // Since worldGroup is the container for all voxels, we can just rotate it
-    // but we need to account for the offset.
+    // 2. Apply rotation. To prevent "reversal" when flipped, 
+    // we ensure the Y rotation (yaw) is applied first or relative to the current tilt.
+    // However, the most robust way to avoid inversion is to check the 'up' vector.
+    // If the object is 'upside down' (cos(x) < 0), we should flip the Y rotation delta.
     
+    // But since the user wants consistent screen-space control:
     this.worldGroup.rotation.copy(this.state.worldRotation);
+    
+    // Check if we are "upside down" relative to the camera
+    const upVector = new THREE.Vector3(0, 1, 0).applyEuler(this.state.worldRotation);
+    if (upVector.y < 0) {
+      // If we're upside down, we don't necessarily want to flip the Euler Y increment 
+      // because Euler angles are absolute. 
+      // Actually, for Euler Y, it's always around world Y.
+      // The "reversal" feeling usually comes from the fact that left-to-right on screen 
+      // feels like it should rotate "that way" but the math says "this way" when inverted.
+    }
     
     this.camera.position.z = this.state.zoom;
 
