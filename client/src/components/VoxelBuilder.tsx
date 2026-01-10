@@ -141,8 +141,7 @@ export function VoxelBuilder() {
       const rightMappings = config.right;
       const status = scene.updateCursor(
         gestures.right.palmPosition,
-        rightMappings.ring === 'cycleBlocks' ? gestures.right.ringThumbPinch : false,
-        rightMappings.pinky === 'cycleSurfaces' ? gestures.right.pinkyThumbPinch : false
+        rightMappings.ring === 'cycleBlocks' ? gestures.right.ringThumbPinch : false
       );
       setCursorStatus(status);
 

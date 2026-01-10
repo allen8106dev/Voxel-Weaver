@@ -17,6 +17,7 @@ export interface VoxelSceneState {
   zoomVelocity: number;
   isLocked: boolean;
   isRotating: boolean;
+  structureCenter: THREE.Vector3;
 }
 
 const GRID_SIZE = 1;
@@ -122,6 +123,7 @@ export class VoxelScene {
       zoomVelocity: 0,
       isLocked: false,
       isRotating: false,
+      structureCenter: new THREE.Vector3(0, 0, 0),
     };
 
     this.placeInitialCube();
@@ -163,6 +165,13 @@ export class VoxelScene {
       position: position.clone(),
       mesh,
     };
+
+    // Update centroid: (center * count + P) / (count + 1)
+    const count = this.state.voxels.size;
+    this.state.structureCenter.multiplyScalar(count)
+      .add(position)
+      .divideScalar(count + 1);
+
     this.state.voxels.set(key, voxel);
     return voxel;
   }
@@ -194,7 +203,22 @@ export class VoxelScene {
       this.state.zoomVelocity *= INERTIA_DAMPING;
     }
 
+    // Dynamic rotation pivot system
+    // 1. Reset rotation to calculate world position correctly
+    this.worldGroup.rotation.set(0, 0, 0);
+    this.worldGroup.position.set(0, 0, 0);
+    this.worldGroup.updateMatrixWorld();
+
+    // 2. Translate so structureCenter is at origin
+    this.worldGroup.position.sub(this.state.structureCenter);
+    
+    // 3. Apply rotation around the origin (which is now our structureCenter)
+    // We use a parent container or matrix manipulation to rotate around pivot
+    // Since worldGroup is the container for all voxels, we can just rotate it
+    // but we need to account for the offset.
+    
     this.worldGroup.rotation.copy(this.state.worldRotation);
+    
     this.camera.position.z = this.state.zoom;
 
     this.renderer.render(this.scene, this.camera);
@@ -385,6 +409,18 @@ export class VoxelScene {
     const voxel = this.state.voxels.get(this.state.targetVoxelId);
     if (!voxel) return false;
 
+    const position = voxel.position;
+    const count = this.state.voxels.size;
+
+    // Update centroid on removal: (center * count - P) / (count - 1)
+    if (count > 1) {
+      this.state.structureCenter.multiplyScalar(count)
+        .sub(position)
+        .divideScalar(count - 1);
+    } else {
+      this.state.structureCenter.set(0, 0, 0);
+    }
+
     this.worldGroup.remove(voxel.mesh);
     voxel.mesh.geometry.dispose();
     (voxel.mesh.material as THREE.Material[]).forEach(m => m.dispose());
@@ -421,6 +457,7 @@ export class VoxelScene {
       (voxel.mesh.material as THREE.Material[]).forEach(m => m.dispose());
     });
     this.state.voxels.clear();
+    this.state.structureCenter.set(0, 0, 0);
     this.placeInitialCube();
   }
 
