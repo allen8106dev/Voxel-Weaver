@@ -211,7 +211,7 @@ export function VoxelBuilder() {
       </div>
 
       <div className={`absolute top-4 left-4 glass-strong rounded-xl p-4 max-w-xs transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-        <h1 className="font-display text-2xl text-primary text-glow-subtle mb-1">VoxelCraft</h1>
+        <h1 className="font-display text-2xl text-primary text-glow-subtle mb-1">VoxelCraft Beta</h1>
         <p className="text-sm text-muted-foreground">Hand-Tracking 3D Builder</p>
       </div>
 
