@@ -6,11 +6,9 @@ import {
   RotateCcw, 
   Settings2,
   Gauge,
+  Hand,
   RotateCw,
   ZoomIn,
-  ZoomOut,
-  Lock,
-  Hand,
   Plus,
   Minus
 } from 'lucide-react';
@@ -26,7 +24,16 @@ import {
   SheetTrigger,
   SheetFooter,
 } from '@/components/ui/sheet';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from '@/components/ui/separator';
+
+export type ActionType = 'none' | 'rotate' | 'zoomIn' | 'zoomOut' | 'lock' | 'cycleBlocks' | 'cycleSurfaces' | 'place' | 'delete';
 
 interface SettingsMenuProps {
   onOpen: () => void;
@@ -38,16 +45,16 @@ interface SettingsMenuProps {
     showHandOverlay: boolean;
     sensitivity: number;
     left: {
-      rotate: boolean;
-      zoomIn: boolean;
-      zoomOut: boolean;
-      lock: boolean;
+      index: ActionType;
+      middle: ActionType;
+      ring: ActionType;
+      pinky: ActionType;
     };
     right: {
-      cycleBlocks: boolean;
-      cycleSurfaces: boolean;
-      place: boolean;
-      delete: boolean;
+      index: ActionType;
+      middle: ActionType;
+      ring: ActionType;
+      pinky: ActionType;
     };
   };
   onConfigChange: (key: string, value: any) => void;
@@ -61,8 +68,20 @@ export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }
     { id: 'config', label: 'Configurations', icon: Settings2 },
   ];
 
-  const updateHandConfig = (hand: 'left' | 'right', feature: string, value: boolean) => {
-    onConfigChange(hand, { ...config[hand], [feature]: value });
+  const actions: { value: ActionType; label: string }[] = [
+    { value: 'none', label: 'None' },
+    { value: 'rotate', label: 'Rotate' },
+    { value: 'zoomIn', label: 'Zoom In' },
+    { value: 'zoomOut', label: 'Zoom Out' },
+    { value: 'lock', label: 'Lock View' },
+    { value: 'cycleBlocks', label: 'Cycle Blocks' },
+    { value: 'cycleSurfaces', label: 'Cycle Surfaces' },
+    { value: 'place', label: 'Place Cube' },
+    { value: 'delete', label: 'Delete Cube' },
+  ];
+
+  const updateMapping = (hand: 'left' | 'right', finger: string, action: ActionType) => {
+    onConfigChange(hand, { ...config[hand], [finger]: action });
   };
 
   return (
@@ -82,7 +101,6 @@ export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }
         </SheetHeader>
         
         <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar Menu */}
           <div className="w-16 sm:w-20 border-r border-primary/10 flex flex-col py-4 bg-black/20">
             {menuItems.map((item) => {
               const Icon = item.icon;
@@ -106,7 +124,6 @@ export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }
             })}
           </div>
 
-          {/* Content Area */}
           <div className="flex-1 overflow-y-auto p-6">
             {activeTab === 'file' && (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-2">
@@ -162,11 +179,12 @@ export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }
 
                     <Separator className="bg-primary/10" />
 
+                    {/* Left Hand Section */}
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Hand className="w-4 h-4 text-primary" />
-                          <Label className="font-bold">Left Hand (View)</Label>
+                          <Label className="font-bold">Left Hand Mapping</Label>
                         </div>
                         <Switch 
                           checked={config.leftHandEnabled}
@@ -175,58 +193,37 @@ export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }
                       </div>
                       
                       {config.leftHandEnabled && (
-                        <div className="grid gap-3 pl-6 border-l border-primary/10">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <RotateCw className="w-3 h-3 text-muted-foreground" />
-                              <Label className="text-xs">Rotation</Label>
+                        <div className="grid gap-3 pl-2">
+                          {['index', 'middle', 'ring', 'pinky'].map((finger) => (
+                            <div key={finger} className="flex items-center justify-between gap-4">
+                              <Label className="text-xs capitalize w-24">Thumb + {finger}</Label>
+                              <Select 
+                                value={config.left[finger as keyof typeof config.left]} 
+                                onValueChange={(val) => updateMapping('left', finger, val as ActionType)}
+                              >
+                                <SelectTrigger className="h-8 text-xs glass">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="glass-strong">
+                                  {actions.map(action => (
+                                    <SelectItem key={action.value} value={action.value} className="text-xs">{action.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
-                            <Switch 
-                              checked={config.left.rotate}
-                              onCheckedChange={(val) => updateHandConfig('left', 'rotate', val)}
-                            />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <ZoomIn className="w-3 h-3 text-muted-foreground" />
-                              <Label className="text-xs">Zoom In</Label>
-                            </div>
-                            <Switch 
-                              checked={config.left.zoomIn}
-                              onCheckedChange={(val) => updateHandConfig('left', 'zoomIn', val)}
-                            />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <ZoomOut className="w-3 h-3 text-muted-foreground" />
-                              <Label className="text-xs">Zoom Out</Label>
-                            </div>
-                            <Switch 
-                              checked={config.left.zoomOut}
-                              onCheckedChange={(val) => updateHandConfig('left', 'zoomOut', val)}
-                            />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Lock className="w-3 h-3 text-muted-foreground" />
-                              <Label className="text-xs">Lock View</Label>
-                            </div>
-                            <Switch 
-                              checked={config.left.lock}
-                              onCheckedChange={(val) => updateHandConfig('left', 'lock', val)}
-                            />
-                          </div>
+                          ))}
                         </div>
                       )}
                     </div>
 
                     <Separator className="bg-primary/10" />
 
+                    {/* Right Hand Section */}
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Hand className="w-4 h-4 text-secondary" />
-                          <Label className="font-bold">Right Hand (Build)</Label>
+                          <Label className="font-bold">Right Hand Mapping</Label>
                         </div>
                         <Switch 
                           checked={config.rightHandEnabled}
@@ -235,47 +232,25 @@ export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }
                       </div>
 
                       {config.rightHandEnabled && (
-                        <div className="grid gap-3 pl-6 border-l border-secondary/10">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Hand className="w-3 h-3 text-muted-foreground" />
-                              <Label className="text-xs">Cycle Blocks</Label>
+                        <div className="grid gap-3 pl-2">
+                          {['index', 'middle', 'ring', 'pinky'].map((finger) => (
+                            <div key={finger} className="flex items-center justify-between gap-4">
+                              <Label className="text-xs capitalize w-24">Thumb + {finger}</Label>
+                              <Select 
+                                value={config.right[finger as keyof typeof config.right]} 
+                                onValueChange={(val) => updateMapping('right', finger, val as ActionType)}
+                              >
+                                <SelectTrigger className="h-8 text-xs glass">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="glass-strong">
+                                  {actions.map(action => (
+                                    <SelectItem key={action.value} value={action.value} className="text-xs">{action.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
-                            <Switch 
-                              checked={config.right.cycleBlocks}
-                              onCheckedChange={(val) => updateHandConfig('right', 'cycleBlocks', val)}
-                            />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Hand className="w-3 h-3 text-muted-foreground" />
-                              <Label className="text-xs">Cycle Surfaces</Label>
-                            </div>
-                            <Switch 
-                              checked={config.right.cycleSurfaces}
-                              onCheckedChange={(val) => updateHandConfig('right', 'cycleSurfaces', val)}
-                            />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Plus className="w-3 h-3 text-green-400" />
-                              <Label className="text-xs">Place Cube</Label>
-                            </div>
-                            <Switch 
-                              checked={config.right.place}
-                              onCheckedChange={(val) => updateHandConfig('right', 'place', val)}
-                            />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Minus className="w-3 h-3 text-red-400" />
-                              <Label className="text-xs">Delete Cube</Label>
-                            </div>
-                            <Switch 
-                              checked={config.right.delete}
-                              onCheckedChange={(val) => updateHandConfig('right', 'delete', val)}
-                            />
-                          </div>
+                          ))}
                         </div>
                       )}
                     </div>
