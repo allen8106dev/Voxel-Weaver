@@ -133,15 +133,27 @@ export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }
                     <h3 className="text-sm font-semibold uppercase tracking-wider">File Operations</h3>
                   </div>
                   <div className="grid grid-cols-1 gap-2">
-                    <Button onClick={onOpen} variant="outline" className="justify-start glass border-primary/20">
+                    <Button 
+                      onClick={onOpen} 
+                      variant="outline" 
+                      className="justify-start glass border-primary/20 hover:bg-primary/10 hover:border-primary/40 transition-all active:scale-[0.98]"
+                    >
                       <FileUp className="w-4 h-4 mr-2" />
                       Open Project
                     </Button>
-                    <Button onClick={onSave} variant="outline" className="justify-start glass border-primary/20">
+                    <Button 
+                      onClick={onSave} 
+                      variant="outline" 
+                      className="justify-start glass border-primary/20 hover:bg-primary/10 hover:border-primary/40 transition-all active:scale-[0.98]"
+                    >
                       <Save className="w-4 h-4 mr-2" />
                       Save As...
                     </Button>
-                    <Button onClick={onReset} variant="outline" className="justify-start glass border-destructive/20 text-destructive hover:text-destructive">
+                    <Button 
+                      onClick={onReset} 
+                      variant="outline" 
+                      className="justify-start glass border-destructive/20 text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/40 transition-all active:scale-[0.98]"
+                    >
                       <RotateCcw className="w-4 h-4 mr-2" />
                       Reset Scene
                     </Button>
