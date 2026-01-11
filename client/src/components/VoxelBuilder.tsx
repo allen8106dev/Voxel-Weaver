@@ -181,6 +181,21 @@ export function VoxelBuilder() {
     });
   };
 
+  const handleSave = useCallback(() => {
+    if (sceneRef.current) {
+      const data = sceneRef.current.exportData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `voxelcraft_${new Date().getTime()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  }, []);
+
   return (
     <div className={`relative w-full h-screen overflow-hidden bg-[#0a0a0f] ${isFullScreen ? 'fullscreen-mode' : ''}`}>
       <div ref={containerRef} className="absolute inset-0" />
@@ -218,7 +233,7 @@ export function VoxelBuilder() {
       <div className="absolute top-4 right-4 flex gap-2 z-50">
         <SettingsMenu 
           onOpen={() => {}} 
-          onSave={() => {}} 
+          onSave={handleSave} 
           onReset={handleClear} 
           config={config} 
           onConfigChange={handleConfigChange} 

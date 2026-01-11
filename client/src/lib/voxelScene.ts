@@ -479,6 +479,18 @@ export class VoxelScene {
     return this.sensitivity;
   }
 
+  exportData(): any {
+    const data: any[] = [];
+    this.state.voxels.forEach((voxel) => {
+      data.push({
+        x: voxel.position.x,
+        y: voxel.position.y,
+        z: voxel.position.z,
+      });
+    });
+    return data;
+  }
+
   clearAll(): void {
     this.state.voxels.forEach((voxel) => {
       this.worldGroup.remove(voxel.mesh);
