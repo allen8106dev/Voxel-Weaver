@@ -181,6 +181,30 @@ export function VoxelBuilder() {
     });
   };
 
+  const handleOpen = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event: any) => {
+        try {
+          const data = JSON.parse(event.target.result);
+          if (Array.isArray(data) && sceneRef.current) {
+            sceneRef.current.importData(data);
+            setVoxelCount(sceneRef.current.getVoxelCount());
+          }
+        } catch (err) {
+          console.error('Failed to parse voxel data:', err);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }, []);
+
   const handleSave = useCallback(() => {
     if (sceneRef.current) {
       const data = sceneRef.current.exportData();
@@ -232,7 +256,7 @@ export function VoxelBuilder() {
 
       <div className="absolute top-4 right-4 flex gap-2 z-50">
         <SettingsMenu 
-          onOpen={() => {}} 
+          onOpen={handleOpen} 
           onSave={handleSave} 
           onReset={handleClear} 
           config={config} 

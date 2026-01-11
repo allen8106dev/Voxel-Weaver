@@ -491,6 +491,13 @@ export class VoxelScene {
     return data;
   }
 
+  importData(data: any[]): void {
+    this.clearAll();
+    data.forEach((voxelData: any) => {
+      this.addVoxelAt(new THREE.Vector3(voxelData.x, voxelData.y, voxelData.z));
+    });
+  }
+
   clearAll(): void {
     this.state.voxels.forEach((voxel) => {
       this.worldGroup.remove(voxel.mesh);
