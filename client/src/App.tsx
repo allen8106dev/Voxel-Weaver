@@ -6,9 +6,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/home";
 import NotFound from "@/pages/not-found";
 
+// 👇 Dynamic base path (Replit vs GitHub Pages)
+const BASE_PATH =
+  import.meta.env.PROD ? "/Voxel-Weaver" : "/";
+
 function AppRouter() {
   return (
-    <Router base="/Voxel-Weaver">
+    <Router base={BASE_PATH}>
       <Switch>
         <Route path="/" component={Home} />
         <Route component={NotFound} />
