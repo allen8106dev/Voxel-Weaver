@@ -363,6 +363,31 @@ export class VoxelScene {
         new THREE.Vector3(0, 0, -1), // 5: Back
       ];
 
+      // Automatically select the face that is physically closest to the hand position
+      // only if not manually cycling
+      if (!ringPinch) {
+        let bestFaceIndex = this.currentFaceIndex;
+        let minFaceDist = Infinity;
+
+        faceNormals.forEach((normal, index) => {
+          // Calculate world position of this face
+          const facePos = closestVoxel!.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE * 0.5));
+          
+          // Distance from hand cursor to this face
+          const dist = handWorldPos.distanceTo(facePos);
+          
+          // Check if this face is already occupied
+          const neighborPos = closestVoxel!.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE));
+          const isOccupied = this.state.voxels.has(positionToKey(neighborPos));
+
+          if (!isOccupied && dist < minFaceDist) {
+            minFaceDist = dist;
+            bestFaceIndex = index;
+          }
+        });
+        this.currentFaceIndex = bestFaceIndex;
+      }
+
       // --- Surface Cycling (via Thumb+Ring Pinch) ---
       if (ringPinch && !this.lastRingPinch) {
         const unconnectedFaces: number[] = [];
