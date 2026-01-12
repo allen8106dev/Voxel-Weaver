@@ -317,13 +317,29 @@ export class VoxelScene {
     let closestVoxel: Voxel | null = null;
     let closestDistance = Infinity;
 
+    // We want selection to feel natural in 3D space.
+    // Instead of screen-space distance, we'll project the cursor into the scene
+    // and find the voxel that is closest to that projected position,
+    // prioritizing voxels that are physically closer to the camera (front-facing).
+    
+    // Create a vector representing the hand's "building plane" relative to the current rotation
+    const handWorldPos = new THREE.Vector3(
+      palmPosition.x * 12,
+      palmPosition.y * 12,
+      0 // Z is relative to current zoom/view
+    ).applyEuler(this.state.worldRotation);
+
     for (const voxel of voxels) {
-      const faceInWorldSpace = voxel.position.clone().applyEuler(this.state.worldRotation);
-      const faceZ = faceInWorldSpace.z + this.state.zoom;
-      const screenDistance = new THREE.Vector2(cursorWorldPos.x - faceInWorldSpace.x, cursorWorldPos.y - faceInWorldSpace.y).length();
+      // Distance in 3D space between hand cursor and voxel
+      const dist3D = handWorldPos.distanceTo(voxel.position);
       
-      // Score: prioritizing front-facing blocks close to hand position
-      const score = screenDistance + (faceZ * 0.5);
+      // Depth scoring: Project voxel to camera space to see how "close" it is to user
+      const viewPos = voxel.position.clone().applyEuler(this.state.worldRotation);
+      const depth = viewPos.z; // More positive Z means closer to camera in our setup
+      
+      // Score: 3D distance is primary, but subtract depth to prioritize "closer" blocks
+      // This makes it easier to select the block in front of another
+      const score = dist3D - (depth * 0.8);
       
       if (score < closestDistance) {
         closestDistance = score;
