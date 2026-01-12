@@ -40,7 +40,7 @@ export function VoxelBuilder() {
     leftHandEnabled: true,
     rightHandEnabled: true,
     showHandOverlay: true,
-    sensitivity: 5.0,
+    sensitivity: 10.0,
     left: {
       index: 'rotate' as ActionType,
       middle: 'zoomIn' as ActionType,
@@ -175,7 +175,7 @@ export function VoxelBuilder() {
     setConfig(prev => {
       const newConfig = { ...prev, [key]: value };
       if (key === 'sensitivity' && sceneRef.current) {
-        sceneRef.current.setSensitivity(value * 2);
+        sceneRef.current.setSensitivity(value);
       }
       return newConfig;
     });

@@ -45,7 +45,7 @@ export class VoxelScene {
   private animationId: number | null = null;
   private lastPalmPosition: THREE.Vector3 | null = null;
   private isValid = true;
-  private sensitivity = 1.5;
+  private sensitivity = 10.0;
   private currentVoxelIndex = -1;
   private currentFaceIndex = -1;
   private lastRingPinch = false;

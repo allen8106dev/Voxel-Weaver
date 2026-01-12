@@ -182,8 +182,8 @@ export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }
                       <Slider
                         value={[config.sensitivity]}
                         onValueChange={(val) => onConfigChange('sensitivity', val[0])}
-                        min={1}
-                        max={10}
+                        min={5}
+                        max={15}
                         step={0.1}
                         className="w-full"
                       />
