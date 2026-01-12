@@ -303,8 +303,8 @@ export class VoxelScene {
 
   updateCursor(palmPosition: THREE.Vector3, ringPinch: boolean): { hasTarget: boolean; canPlace: boolean; canDelete: boolean } {
     const cursorWorldPos = new THREE.Vector3(
-      palmPosition.x * 12,
-      palmPosition.y * 12,
+      palmPosition.x * 20,
+      palmPosition.y * 20,
       5
     );
 
@@ -324,8 +324,8 @@ export class VoxelScene {
     
     // Create a vector representing the hand's "building plane" relative to the current rotation
     const handWorldPos = new THREE.Vector3(
-      palmPosition.x * 12,
-      palmPosition.y * 12,
+      palmPosition.x * 20,
+      palmPosition.y * 20,
       0 // Z is relative to current zoom/view
     ).applyEuler(this.state.worldRotation);
 
