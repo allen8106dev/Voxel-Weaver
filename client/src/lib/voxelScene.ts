@@ -373,15 +373,23 @@ export class VoxelScene {
           // Calculate world position of this face
           const facePos = closestVoxel!.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE * 0.5));
           
-          // Distance from hand cursor to this face
+          // Distance from hand cursor to this face in 3D space
+          // We project the face position to camera space to handle "occlusion" naturally
+          const faceViewPos = facePos.clone().applyEuler(this.state.worldRotation);
+          const handViewPos = handWorldPos.clone(); // handWorldPos is already projected/rotated logic-wise
+          
           const dist = handWorldPos.distanceTo(facePos);
+          const depth = faceViewPos.z;
+          
+          // Score similar to block selection: 3D distance - depth weighting
+          const score = dist - (depth * 0.5);
           
           // Check if this face is already occupied
           const neighborPos = closestVoxel!.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE));
           const isOccupied = this.state.voxels.has(positionToKey(neighborPos));
 
-          if (!isOccupied && dist < minFaceDist) {
-            minFaceDist = dist;
+          if (!isOccupied && score < minFaceDist) {
+            minFaceDist = score;
             bestFaceIndex = index;
           }
         });
