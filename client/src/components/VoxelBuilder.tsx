@@ -118,56 +118,68 @@ export function VoxelBuilder() {
     const scene = sceneRef.current;
     const lastGesture = lastGestureRef.current;
 
-    const executeAction = (hand: 'left' | 'right', action: ActionType, isPinch: boolean, isLastPinch: boolean) => {
-      if (action === 'none') return;
-      
-      if (hand === 'left') {
-        // Left hand handles continuous states mostly (handled in scene.updateLeftHand)
-      } else {
-        if (isPinch && !isLastPinch) {
-          if (action === 'place' && cursorStatus.canPlace) {
-            if (scene.placeCube()) setVoxelCount(scene.getVoxelCount());
-          } else if (action === 'delete' && cursorStatus.canDelete) {
-            if (scene.deleteCube()) setVoxelCount(scene.getVoxelCount());
-          }
-        }
-      }
+    const getActionFromMappings = (hand: 'left' | 'right', action: ActionType, pinches: { index: boolean; middle: boolean; ring: boolean; pinky: boolean }): boolean => {
+      const mappings = hand === 'left' ? config.left : config.right;
+      if (mappings.index === action && pinches.index) return true;
+      if (mappings.middle === action && pinches.middle) return true;
+      if (mappings.ring === action && pinches.ring) return true;
+      if (mappings.pinky === action && pinches.pinky) return true;
+      return false;
     };
 
     if (gestures.left && config.leftHandEnabled) {
-      const leftMappings = config.left;
+      const leftPinches = {
+        index: gestures.left.indexThumbPinch,
+        middle: gestures.left.middleThumbPinch,
+        ring: gestures.left.ringThumbPinch,
+        pinky: gestures.left.pinkyThumbPinch
+      };
+      
       scene.updateLeftHand(
         gestures.left.palmPosition,
-        leftMappings.index === 'rotate' ? gestures.left.indexThumbPinch : false,
-        leftMappings.middle === 'zoomIn' ? gestures.left.middleThumbPinch : false,
-        leftMappings.ring === 'zoomOut' ? gestures.left.ringThumbPinch : false,
-        leftMappings.pinky === 'lock' ? gestures.left.pinkyThumbPinch : false
+        getActionFromMappings('left', 'rotate', leftPinches),
+        getActionFromMappings('left', 'zoomIn', leftPinches),
+        getActionFromMappings('left', 'zoomOut', leftPinches),
+        getActionFromMappings('left', 'lock', leftPinches)
       );
       setIsLocked(scene.isLockedState());
     }
 
     if (gestures.right && config.rightHandEnabled) {
-      const rightMappings = config.right;
+      const rightPinches = {
+        index: gestures.right.indexThumbPinch,
+        middle: gestures.right.middleThumbPinch,
+        ring: gestures.right.ringThumbPinch,
+        pinky: gestures.right.pinkyThumbPinch
+      };
+
+      const cycleBlocks = getActionFromMappings('right', 'cycleBlocks', rightPinches);
+      const cycleSurfaces = getActionFromMappings('right', 'cycleSurfaces', rightPinches);
+      
       const status = scene.updateCursor(
         gestures.right.palmPosition,
-        rightMappings.ring === 'cycleBlocks' ? gestures.right.ringThumbPinch : false
+        cycleBlocks,
+        cycleSurfaces
       );
       setCursorStatus(status);
 
-      if (rightMappings.index === 'place' && gestures.right.indexThumbPinch && !lastGesture.rightIndexPinch) {
-        if (status.canPlace && scene.placeCube()) setVoxelCount(scene.getVoxelCount());
+      const placeActive = getActionFromMappings('right', 'place', rightPinches);
+      const deleteActive = getActionFromMappings('right', 'delete', rightPinches);
+
+      if (placeActive && !lastGesture.rightIndexPinch && status.canPlace) {
+        if (scene.placeCube()) setVoxelCount(scene.getVoxelCount());
       }
-      if (rightMappings.middle === 'delete' && gestures.right.middleThumbPinch && !lastGesture.rightMiddlePinch) {
-        if (status.canDelete && scene.deleteCube()) setVoxelCount(scene.getVoxelCount());
+      if (deleteActive && !lastGesture.rightMiddlePinch && status.canDelete) {
+        if (scene.deleteCube()) setVoxelCount(scene.getVoxelCount());
       }
 
-      lastGesture.rightIndexPinch = gestures.right.indexThumbPinch;
-      lastGesture.rightMiddlePinch = gestures.right.middleThumbPinch;
+      lastGesture.rightIndexPinch = placeActive;
+      lastGesture.rightMiddlePinch = deleteActive;
     } else {
       scene.hideCursor();
       setCursorStatus({ hasTarget: false, canPlace: false, canDelete: false });
     }
-  }, [config, cursorStatus]);
+  }, [config]);
 
   useEffect(() => {
     processGestures(gestures);
