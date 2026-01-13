@@ -31,8 +31,6 @@ import { SettingsMenu, ActionType } from '@/components/SettingsMenu';
 interface GestureDebounce {
   rightIndexPinch: boolean;
   rightMiddlePinch: boolean;
-  rightRingPinch: boolean;
-  rightPinkyPinch: boolean;
   leftIndexPinch: boolean;
   leftMiddlePinch: boolean;
 }
@@ -81,8 +79,6 @@ export function VoxelBuilder() {
   const lastGestureRef = useRef<GestureDebounce>({
     rightIndexPinch: false,
     rightMiddlePinch: false,
-    rightRingPinch: false,
-    rightPinkyPinch: false,
     leftIndexPinch: false,
     leftMiddlePinch: false,
   });
@@ -121,9 +117,15 @@ export function VoxelBuilder() {
     const scene = sceneRef.current;
     const lastGesture = lastGestureRef.current;
 
-    const getActionFromMappings = (hand: 'left' | 'right', action: ActionType, pinches: { index: boolean; middle: boolean; ring: boolean; pinky: boolean }): boolean => {
-      const mappings = hand === 'left' ? config.left : config.right;
+    const getActionFromMappings = (hand: 'left' | 'right', action: ActionType, pinches: { index: boolean; middle: boolean; ring?: boolean; pinky?: boolean }): boolean => {
+      if (hand === 'right') {
+        const mappings = config.right;
+        if (mappings.index === action && pinches.index) return true;
+        if (mappings.middle === action && pinches.middle) return true;
+        return false;
+      }
       
+      const mappings = config.left;
       if (mappings.index === action && pinches.index) return true;
       if (mappings.middle === action && pinches.middle) return true;
       if (mappings.ring === action && pinches.ring) return true;

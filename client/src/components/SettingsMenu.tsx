@@ -55,8 +55,6 @@ interface SettingsMenuProps {
     right: {
       index: ActionType;
       middle: ActionType;
-      ring: ActionType;
-      pinky: ActionType;
     };
   };
   onConfigChange: (key: string, value: any) => void;
