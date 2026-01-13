@@ -39,6 +39,7 @@ interface SettingsMenuProps {
   onOpen: () => void;
   onSave: () => void;
   onReset: () => void;
+  onResetConfig?: () => void;
   config: {
     leftHandEnabled: boolean;
     rightHandEnabled: boolean;
@@ -60,7 +61,7 @@ interface SettingsMenuProps {
   onConfigChange: (key: string, value: any) => void;
 }
 
-export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }: SettingsMenuProps) {
+export function SettingsMenu({ onOpen, onSave, onReset, onResetConfig, config, onConfigChange }: SettingsMenuProps) {
   const [activeTab, setActiveTab] = useState('file');
 
   const menuItems = [
@@ -157,6 +158,16 @@ export function SettingsMenu({ onOpen, onSave, onReset, config, onConfigChange }
                       <RotateCcw className="w-4 h-4 mr-2" />
                       Reset Scene
                     </Button>
+                    {onResetConfig && (
+                      <Button 
+                        onClick={onResetConfig} 
+                        variant="outline" 
+                        className="justify-start glass border-primary/20 hover:bg-primary/10 hover:border-primary/40 transition-all active:scale-[0.98]"
+                      >
+                        <Settings2 className="w-4 h-4 mr-2" />
+                        Restore Defaults
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

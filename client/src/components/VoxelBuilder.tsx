@@ -36,7 +36,7 @@ interface GestureDebounce {
 }
 
 export function VoxelBuilder() {
-  const [config, setConfig] = useState({
+  const DEFAULT_CONFIG = {
     leftHandEnabled: true,
     rightHandEnabled: true,
     showHandOverlay: true,
@@ -53,7 +53,16 @@ export function VoxelBuilder() {
       ring: 'cycleBlocks' as ActionType,
       pinky: 'cycleSurfaces' as ActionType
     }
-  });
+  };
+
+  const [config, setConfig] = useState(DEFAULT_CONFIG);
+
+  const handleResetConfig = useCallback(() => {
+    setConfig(DEFAULT_CONFIG);
+    if (sceneRef.current) {
+      sceneRef.current.setSensitivity(DEFAULT_CONFIG.sensitivity);
+    }
+  }, []);
   
   const [voxelCount, setVoxelCount] = useState(1);
   const [isLocked, setIsLocked] = useState(false);
@@ -259,6 +268,7 @@ export function VoxelBuilder() {
           onOpen={handleOpen} 
           onSave={handleSave} 
           onReset={handleClear} 
+          onResetConfig={handleResetConfig}
           config={config} 
           onConfigChange={handleConfigChange} 
         />
