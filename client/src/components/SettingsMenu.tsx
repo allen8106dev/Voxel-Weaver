@@ -45,6 +45,7 @@ interface SettingsMenuProps {
     rightHandEnabled: boolean;
     showHandOverlay: boolean;
     sensitivity: number;
+    handsSwapped: boolean;
     left: {
       index: ActionType;
       middle: ActionType;
