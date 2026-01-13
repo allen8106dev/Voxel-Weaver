@@ -305,7 +305,7 @@ export function SettingsMenu({ onOpen, onSave, onReset, onResetConfig, config, o
 
         <SheetFooter className="p-6 pt-2">
           <p className="text-[10px] text-center text-muted-foreground/50 w-full uppercase tracking-widest">
-            VoxelCraft v1.2.0
+            VoxelCraft v1.2.1
           </p>
         </SheetFooter>
       </SheetContent>
