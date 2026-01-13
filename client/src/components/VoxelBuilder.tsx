@@ -124,9 +124,7 @@ export function VoxelBuilder() {
     const lastGesture = lastGestureRef.current;
 
     const getActionFromMappings = (hand: 'left' | 'right', action: ActionType, pinches: { index: boolean; middle: boolean; ring: boolean; pinky: boolean }): boolean => {
-      // Logic for hand swapping
-      const effectiveHand = config.handsSwapped ? (hand === 'left' ? 'right' : 'left') : hand;
-      const mappings = effectiveHand === 'left' ? config.left : config.right;
+      const mappings = hand === 'left' ? config.left : config.right;
       
       if (mappings.index === action && pinches.index) return true;
       if (mappings.middle === action && pinches.middle) return true;
@@ -191,6 +189,11 @@ export function VoxelBuilder() {
       scene.hideCursor();
       setCursorStatus({ hasTarget: false, canPlace: false, canDelete: false });
     }
+
+    if (viewHand && config.leftHandEnabled) {
+      lastGesture.leftIndexPinch = viewHand.indexThumbPinch;
+      lastGesture.leftMiddlePinch = viewHand.middleThumbPinch;
+    }
   }, [config]);
 
   useEffect(() => {
@@ -207,15 +210,6 @@ export function VoxelBuilder() {
   const handleConfigChange = (key: string, value: any) => {
     setConfig(prev => {
       let newConfig = { ...prev, [key]: value };
-      
-      // When swapping hands, reset mappings to their respective defaults for that hand
-      if (key === 'handsSwapped') {
-        newConfig = {
-          ...newConfig,
-          left: DEFAULT_CONFIG.left,
-          right: DEFAULT_CONFIG.right
-        };
-      }
       
       if (key === 'sensitivity' && sceneRef.current) {
         sceneRef.current.setSensitivity(value);
