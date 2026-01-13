@@ -363,26 +363,36 @@ export class VoxelScene {
         new THREE.Vector3(0, 0, -1), // 5: Back
       ];
 
-      // Automatically select the face that is physically closest to the hand position
+      // Automatically select the face that is physically most visible to the hand position
       // only if not manually cycling
       if (!ringPinch) {
         let bestFaceIndex = this.currentFaceIndex;
-        let minFaceDist = Infinity;
+        let maxVisibility = -Infinity;
+
+        // Camera direction in world space
+        const cameraDir = new THREE.Vector3(0, 0, -1).applyEuler(this.state.worldRotation);
 
         faceNormals.forEach((normal, index) => {
-          // Calculate world position of this face
-          const facePos = closestVoxel!.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE * 0.5));
-          
-          // Distance from hand cursor to this face in 3D space
-          const dist = handWorldPos.distanceTo(facePos);
-          
           // Check if this face is already occupied
           const neighborPos = closestVoxel!.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE));
           const isOccupied = this.state.voxels.has(positionToKey(neighborPos));
 
-          if (!isOccupied && dist < minFaceDist) {
-            minFaceDist = dist;
-            bestFaceIndex = index;
+          if (!isOccupied) {
+            // Visibility score: dot product of face normal and camera direction
+            // More positive value means the face is pointing more towards the camera
+            // We multiply by the distance from hand cursor to favor faces near the hand
+            const facePos = closestVoxel!.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE * 0.5));
+            const handToFaceDist = handWorldPos.distanceTo(facePos);
+            
+            const alignment = normal.clone().applyEuler(this.state.worldRotation).dot(new THREE.Vector3(0, 0, 1));
+            
+            // Visibility score: alignment with camera (visibility area) weighted by proximity to hand
+            const visibilityScore = alignment / (handToFaceDist + 0.1);
+
+            if (visibilityScore > maxVisibility) {
+              maxVisibility = visibilityScore;
+              bestFaceIndex = index;
+            }
           }
         });
         this.currentFaceIndex = bestFaceIndex;
