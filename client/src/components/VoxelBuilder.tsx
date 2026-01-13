@@ -43,6 +43,7 @@ export function VoxelBuilder() {
     rightHandEnabled: true,
     showHandOverlay: true,
     sensitivity: 10.0,
+    handsSwapped: false,
     left: {
       index: 'rotate' as ActionType,
       middle: 'zoomIn' as ActionType,
@@ -123,7 +124,10 @@ export function VoxelBuilder() {
     const lastGesture = lastGestureRef.current;
 
     const getActionFromMappings = (hand: 'left' | 'right', action: ActionType, pinches: { index: boolean; middle: boolean; ring: boolean; pinky: boolean }): boolean => {
-      const mappings = hand === 'left' ? config.left : config.right;
+      // Logic for hand swapping
+      const effectiveHand = config.handsSwapped ? (hand === 'left' ? 'right' : 'left') : hand;
+      const mappings = effectiveHand === 'left' ? config.left : config.right;
+      
       if (mappings.index === action && pinches.index) return true;
       if (mappings.middle === action && pinches.middle) return true;
       if (mappings.ring === action && pinches.ring) return true;
@@ -131,75 +135,48 @@ export function VoxelBuilder() {
       return false;
     };
 
-    if (gestures.left && config.leftHandEnabled) {
-      const leftPinches = {
-        index: gestures.left.indexThumbPinch,
-        middle: gestures.left.middleThumbPinch,
-        ring: gestures.left.ringThumbPinch,
-        pinky: gestures.left.pinkyThumbPinch
+    // Determine which real hand maps to which logic hand
+    const viewHand = config.handsSwapped ? gestures.right : gestures.left;
+    const buildHand = config.handsSwapped ? gestures.left : gestures.right;
+
+    if (viewHand && config.leftHandEnabled) {
+      const pinches = {
+        index: viewHand.indexThumbPinch,
+        middle: viewHand.middleThumbPinch,
+        ring: viewHand.ringThumbPinch,
+        pinky: viewHand.pinkyThumbPinch
       };
       
       scene.updateLeftHand(
-        gestures.left.palmPosition,
-        getActionFromMappings('left', 'rotate', leftPinches),
-        getActionFromMappings('left', 'zoomIn', leftPinches),
-        getActionFromMappings('left', 'zoomOut', leftPinches),
-        getActionFromMappings('left', 'lock', leftPinches)
+        viewHand.palmPosition,
+        getActionFromMappings('left', 'rotate', pinches),
+        getActionFromMappings('left', 'zoomIn', pinches),
+        getActionFromMappings('left', 'zoomOut', pinches),
+        getActionFromMappings('left', 'lock', pinches)
       );
       setIsLocked(scene.isLockedState());
-
-      // Execute discrete actions for left hand
-      const placeActive = getActionFromMappings('left', 'place', leftPinches);
-      const deleteActive = getActionFromMappings('left', 'delete', leftPinches);
-      
-      if (placeActive && !lastGesture.leftIndexPinch && cursorStatus.canPlace) {
-        if (scene.placeCube()) setVoxelCount(scene.getVoxelCount());
-      }
-      if (deleteActive && !lastGesture.leftMiddlePinch && cursorStatus.canDelete) {
-        if (scene.deleteCube()) setVoxelCount(scene.getVoxelCount());
-      }
-      
-      lastGesture.leftIndexPinch = placeActive;
-      lastGesture.leftMiddlePinch = deleteActive;
     }
 
-    if (gestures.right && config.rightHandEnabled) {
-      const rightPinches = {
-        index: gestures.right.indexThumbPinch,
-        middle: gestures.right.middleThumbPinch,
-        ring: gestures.right.ringThumbPinch,
-        pinky: gestures.right.pinkyThumbPinch
+    if (buildHand && config.rightHandEnabled) {
+      const pinches = {
+        index: buildHand.indexThumbPinch,
+        middle: buildHand.middleThumbPinch,
+        ring: buildHand.ringThumbPinch,
+        pinky: buildHand.pinkyThumbPinch
       };
 
-      const cycleBlocks = getActionFromMappings('right', 'cycleBlocks', rightPinches);
-      const cycleSurfaces = getActionFromMappings('right', 'cycleSurfaces', rightPinches);
+      const cycleBlocks = getActionFromMappings('right', 'cycleBlocks', pinches);
+      const cycleSurfaces = getActionFromMappings('right', 'cycleSurfaces', pinches);
       
       const status = scene.updateCursor(
-        gestures.right.palmPosition,
+        buildHand.palmPosition,
         cycleBlocks,
         cycleSurfaces
       );
       setCursorStatus(status);
 
-      const placeActive = getActionFromMappings('right', 'place', rightPinches);
-      const deleteActive = getActionFromMappings('right', 'delete', rightPinches);
-      
-      // Also allow right hand to perform left-hand-typical functions if mapped
-      const rotateActive = getActionFromMappings('right', 'rotate', rightPinches);
-      const zoomInActive = getActionFromMappings('right', 'zoomIn', rightPinches);
-      const zoomOutActive = getActionFromMappings('right', 'zoomOut', rightPinches);
-      const lockActive = getActionFromMappings('right', 'lock', rightPinches);
-
-      if (rotateActive || zoomInActive || zoomOutActive || lockActive) {
-        scene.updateLeftHand(
-          gestures.right.palmPosition,
-          rotateActive,
-          zoomInActive,
-          zoomOutActive,
-          lockActive
-        );
-        setIsLocked(scene.isLockedState());
-      }
+      const placeActive = getActionFromMappings('right', 'place', pinches);
+      const deleteActive = getActionFromMappings('right', 'delete', pinches);
 
       if (placeActive && !lastGesture.rightIndexPinch && status.canPlace) {
         if (scene.placeCube()) setVoxelCount(scene.getVoxelCount());

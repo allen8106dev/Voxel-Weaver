@@ -69,12 +69,16 @@ export function SettingsMenu({ onOpen, onSave, onReset, onResetConfig, config, o
     { id: 'config', label: 'Configurations', icon: Settings2 },
   ];
 
-  const actions: { value: ActionType; label: string }[] = [
+  const leftActions: { value: ActionType; label: string }[] = [
     { value: 'none', label: 'None' },
     { value: 'rotate', label: 'Rotate' },
     { value: 'zoomIn', label: 'Zoom In' },
     { value: 'zoomOut', label: 'Zoom Out' },
     { value: 'lock', label: 'Lock View' },
+  ];
+
+  const rightActions: { value: ActionType; label: string }[] = [
+    { value: 'none', label: 'None' },
     { value: 'cycleBlocks', label: 'Cycle Blocks' },
     { value: 'cycleSurfaces', label: 'Cycle Surfaces' },
     { value: 'place', label: 'Place Cube' },
@@ -202,12 +206,30 @@ export function SettingsMenu({ onOpen, onSave, onReset, onResetConfig, config, o
 
                     <Separator className="bg-primary/10" />
 
+                    <div className="flex items-center justify-between p-3 glass-strong rounded-lg border border-primary/20">
+                      <div className="space-y-0.5">
+                        <Label className="text-sm font-bold">Hand Dominance</Label>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Swap View & Build Hands</p>
+                      </div>
+                      <Button
+                        onClick={() => onConfigChange('handsSwapped', !config.handsSwapped)}
+                        variant="outline"
+                        size="sm"
+                        className={`glass h-8 px-4 transition-all ${config.handsSwapped ? 'border-secondary/60 text-secondary bg-secondary/10' : 'border-primary/60 text-primary bg-primary/10'}`}
+                      >
+                        <Hand className="w-3 h-3 mr-2" />
+                        {config.handsSwapped ? 'Right Hand View' : 'Left Hand View'}
+                      </Button>
+                    </div>
+
+                    <Separator className="bg-primary/10" />
+
                     {/* Left Hand Section */}
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Hand className="w-4 h-4 text-primary" />
-                          <Label className="font-bold">Left Hand Mapping</Label>
+                          <Hand className={`w-4 h-4 ${config.handsSwapped ? 'text-secondary' : 'text-primary'}`} />
+                          <Label className="font-bold">{config.handsSwapped ? 'Right Hand' : 'Left Hand'} (View)</Label>
                         </div>
                         <Switch 
                           checked={config.leftHandEnabled}
@@ -228,7 +250,7 @@ export function SettingsMenu({ onOpen, onSave, onReset, onResetConfig, config, o
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="glass-strong">
-                                  {actions.map(action => (
+                                  {leftActions.map(action => (
                                     <SelectItem key={action.value} value={action.value} className="text-xs">{action.label}</SelectItem>
                                   ))}
                                 </SelectContent>
@@ -245,8 +267,8 @@ export function SettingsMenu({ onOpen, onSave, onReset, onResetConfig, config, o
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Hand className="w-4 h-4 text-secondary" />
-                          <Label className="font-bold">Right Hand Mapping</Label>
+                          <Hand className={`w-4 h-4 ${config.handsSwapped ? 'text-primary' : 'text-secondary'}`} />
+                          <Label className="font-bold">{config.handsSwapped ? 'Left Hand' : 'Right Hand'} (Build)</Label>
                         </div>
                         <Switch 
                           checked={config.rightHandEnabled}
@@ -267,7 +289,7 @@ export function SettingsMenu({ onOpen, onSave, onReset, onResetConfig, config, o
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="glass-strong">
-                                  {actions.map(action => (
+                                  {rightActions.map(action => (
                                     <SelectItem key={action.value} value={action.value} className="text-xs">{action.label}</SelectItem>
                                   ))}
                                 </SelectContent>
