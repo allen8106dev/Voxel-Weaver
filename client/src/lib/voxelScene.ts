@@ -317,29 +317,26 @@ export class VoxelScene {
     let closestVoxel: Voxel | null = null;
     let closestDistance = Infinity;
 
-    // We want selection to feel natural in 3D space.
-    // Instead of screen-space distance, we'll project the cursor into the scene
-    // and find the voxel that is closest to that projected position,
-    // prioritizing voxels that are physically closer to the camera (front-facing).
+    // Get the hand's projected position into the world's local coordinate system
+    // This ensures that the hand's "up" is always relative to the screen, 
+    // and movement feels consistent regardless of structure orientation.
+    const worldInverse = new THREE.Quaternion().copy(this.worldGroup.quaternion).invert();
     
-    // Create a vector representing the hand's "building plane" relative to the current rotation
-    const handWorldPos = new THREE.Vector3(
-      palmPosition.x * 20,
-      palmPosition.y * 20,
-      0 // Z is relative to current zoom/view
-    ).applyEuler(this.state.worldRotation);
+    // cursorWorldPos is in screen-space (relative to the camera view)
+    // We transform it into the local space of our voxel structure
+    const handLocalPos = cursorWorldPos.clone().applyQuaternion(worldInverse);
 
     for (const voxel of voxels) {
-      // Distance in 3D space between hand cursor and voxel
-      const dist3D = handWorldPos.distanceTo(voxel.position);
+      // Distance in the local space of the structure
+      const dist = handLocalPos.distanceTo(voxel.position);
       
-      // Depth scoring: Project voxel to camera space to see how "close" it is to user
+      // Project voxel to camera space to see how "close" it is to user (depth)
+      // This is crucial for selecting the front-most block
       const viewPos = voxel.position.clone().applyEuler(this.state.worldRotation);
-      const depth = viewPos.z; // More positive Z means closer to camera in our setup
+      const depth = viewPos.z; 
       
-      // Score: 3D distance is primary, but subtract depth to prioritize "closer" blocks
-      // This makes it easier to select the block in front of another
-      const score = dist3D - (depth * 0.8);
+      // Score: proximity in local space weighted by depth to prioritize front blocks
+      const score = dist - (depth * 0.8);
       
       if (score < closestDistance) {
         closestDistance = score;
@@ -378,15 +375,13 @@ export class VoxelScene {
           const isOccupied = this.state.voxels.has(positionToKey(neighborPos));
 
           if (!isOccupied) {
-            // Visibility score: dot product of face normal and camera direction
-            // More positive value means the face is pointing more towards the camera
-            // We multiply by the distance from hand cursor to favor faces near the hand
+            // Visibility score: alignment with camera (visibility area) weighted by proximity to hand
+            // We use the worldInverse transformed handLocalPos for consistent proximity regardless of rotation
             const facePos = closestVoxel!.position.clone().add(normal.clone().multiplyScalar(GRID_SIZE * 0.5));
-            const handToFaceDist = handWorldPos.distanceTo(facePos);
+            const handToFaceDist = handLocalPos.distanceTo(facePos);
             
             const alignment = normal.clone().applyEuler(this.state.worldRotation).dot(new THREE.Vector3(0, 0, 1));
             
-            // Visibility score: alignment with camera (visibility area) weighted by proximity to hand
             const visibilityScore = alignment / (handToFaceDist + 0.1);
 
             if (visibilityScore > maxVisibility) {
