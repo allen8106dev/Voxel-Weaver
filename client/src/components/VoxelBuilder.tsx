@@ -260,16 +260,6 @@ export function VoxelBuilder() {
 
       <div className={`absolute bottom-4 right-4 flex flex-col items-end gap-2 transition-opacity duration-300 ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <div className="flex gap-2">
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="glass h-8 px-3 text-[10px] font-medium uppercase tracking-wider text-primary/70 hover:text-primary transition-all hover:bg-primary/5 border-primary/20"
-          >
-            <a href="https://buymeacoffee.com/allen_joseph" target="_blank" rel="noopener noreferrer">
-              ☕ Buy me a coffee
-            </a>
-          </Button>
           {!isRunning ? (
             <Button onClick={start} disabled={!isInitialized} variant="outline" size="icon" className="glass h-8 w-8 text-primary">
               <Camera className="w-4 h-4" />
@@ -328,6 +318,16 @@ export function VoxelBuilder() {
           <div className={`w-3 h-3 rounded-full ml-2 ${gestures.right ? 'bg-secondary animate-pulse' : 'bg-muted'}`} />
           <span className="text-xs text-muted-foreground">Right</span>
         </div>
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className="glass h-8 px-3 text-[10px] font-medium uppercase tracking-wider text-primary/70 hover:text-primary transition-all hover:bg-primary/5 border-primary/20 w-full justify-center mt-2"
+        >
+          <a href="https://buymeacoffee.com/allen_joseph" target="_blank" rel="noopener noreferrer">
+            ☕ Buy me a coffee
+          </a>
+        </Button>
       </div>
 
       {showInstructions && !isFullScreen && (
