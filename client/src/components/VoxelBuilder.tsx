@@ -206,7 +206,17 @@ export function VoxelBuilder() {
 
   const handleConfigChange = (key: string, value: any) => {
     setConfig(prev => {
-      const newConfig = { ...prev, [key]: value };
+      let newConfig = { ...prev, [key]: value };
+      
+      // When swapping hands, reset mappings to their respective defaults for that hand
+      if (key === 'handsSwapped') {
+        newConfig = {
+          ...newConfig,
+          left: DEFAULT_CONFIG.left,
+          right: DEFAULT_CONFIG.right
+        };
+      }
+      
       if (key === 'sensitivity' && sceneRef.current) {
         sceneRef.current.setSensitivity(value);
       }
