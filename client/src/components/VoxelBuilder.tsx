@@ -33,6 +33,8 @@ interface GestureDebounce {
   rightMiddlePinch: boolean;
   rightRingPinch: boolean;
   rightPinkyPinch: boolean;
+  leftIndexPinch: boolean;
+  leftMiddlePinch: boolean;
 }
 
 export function VoxelBuilder() {
@@ -82,6 +84,8 @@ export function VoxelBuilder() {
     rightMiddlePinch: false,
     rightRingPinch: false,
     rightPinkyPinch: false,
+    leftIndexPinch: false,
+    leftMiddlePinch: false,
   });
 
   useEffect(() => {
@@ -143,6 +147,20 @@ export function VoxelBuilder() {
         getActionFromMappings('left', 'lock', leftPinches)
       );
       setIsLocked(scene.isLockedState());
+
+      // Execute discrete actions for left hand
+      const placeActive = getActionFromMappings('left', 'place', leftPinches);
+      const deleteActive = getActionFromMappings('left', 'delete', leftPinches);
+      
+      if (placeActive && !lastGesture.leftIndexPinch && cursorStatus.canPlace) {
+        if (scene.placeCube()) setVoxelCount(scene.getVoxelCount());
+      }
+      if (deleteActive && !lastGesture.leftMiddlePinch && cursorStatus.canDelete) {
+        if (scene.deleteCube()) setVoxelCount(scene.getVoxelCount());
+      }
+      
+      lastGesture.leftIndexPinch = placeActive;
+      lastGesture.leftMiddlePinch = deleteActive;
     }
 
     if (gestures.right && config.rightHandEnabled) {
@@ -165,6 +183,23 @@ export function VoxelBuilder() {
 
       const placeActive = getActionFromMappings('right', 'place', rightPinches);
       const deleteActive = getActionFromMappings('right', 'delete', rightPinches);
+      
+      // Also allow right hand to perform left-hand-typical functions if mapped
+      const rotateActive = getActionFromMappings('right', 'rotate', rightPinches);
+      const zoomInActive = getActionFromMappings('right', 'zoomIn', rightPinches);
+      const zoomOutActive = getActionFromMappings('right', 'zoomOut', rightPinches);
+      const lockActive = getActionFromMappings('right', 'lock', rightPinches);
+
+      if (rotateActive || zoomInActive || zoomOutActive || lockActive) {
+        scene.updateLeftHand(
+          gestures.right.palmPosition,
+          rotateActive,
+          zoomInActive,
+          zoomOutActive,
+          lockActive
+        );
+        setIsLocked(scene.isLockedState());
+      }
 
       if (placeActive && !lastGesture.rightIndexPinch && status.canPlace) {
         if (scene.placeCube()) setVoxelCount(scene.getVoxelCount());
