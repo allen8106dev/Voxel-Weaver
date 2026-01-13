@@ -52,9 +52,7 @@ export function VoxelBuilder() {
     },
     right: {
       index: 'place' as ActionType,
-      middle: 'delete' as ActionType,
-      ring: 'cycleBlocks' as ActionType,
-      pinky: 'cycleSurfaces' as ActionType
+      middle: 'delete' as ActionType
     }
   };
 
@@ -159,17 +157,14 @@ export function VoxelBuilder() {
       const pinches = {
         index: buildHand.indexThumbPinch,
         middle: buildHand.middleThumbPinch,
-        ring: buildHand.ringThumbPinch,
-        pinky: buildHand.pinkyThumbPinch
+        ring: false,
+        pinky: false
       };
 
-      const cycleBlocks = getActionFromMappings('right', 'cycleBlocks', pinches);
-      const cycleSurfaces = getActionFromMappings('right', 'cycleSurfaces', pinches);
-      
       const status = scene.updateCursor(
         buildHand.palmPosition,
-        cycleBlocks,
-        cycleSurfaces
+        false,
+        false
       );
       setCursorStatus(status);
 
@@ -346,8 +341,6 @@ export function VoxelBuilder() {
                 <ul className="text-xs text-muted-foreground space-y-1 mt-1">
                   <li><Plus className="w-3 h-3 inline mr-1" /> {config.right.index} (Index)</li>
                   <li><Minus className="w-3 h-3 inline mr-1" /> {config.right.middle} (Middle)</li>
-                  <li><Hand className="w-3 h-3 inline mr-1" /> {config.right.ring} (Ring)</li>
-                  <li><Hand className="w-3 h-3 inline mr-1" /> {config.right.pinky} (Pinky)</li>
                 </ul>
               </div>
             </div>

@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from '@/components/ui/separator';
 
-export type ActionType = 'none' | 'rotate' | 'zoomIn' | 'zoomOut' | 'lock' | 'cycleBlocks' | 'cycleSurfaces' | 'place' | 'delete';
+export type ActionType = 'none' | 'rotate' | 'zoomIn' | 'zoomOut' | 'lock' | 'place' | 'delete';
 
 interface SettingsMenuProps {
   onOpen: () => void;
@@ -80,8 +80,6 @@ export function SettingsMenu({ onOpen, onSave, onReset, onResetConfig, config, o
 
   const rightActions: { value: ActionType; label: string }[] = [
     { value: 'none', label: 'None' },
-    { value: 'cycleBlocks', label: 'Cycle Blocks' },
-    { value: 'cycleSurfaces', label: 'Cycle Surfaces' },
     { value: 'place', label: 'Place Cube' },
     { value: 'delete', label: 'Delete Cube' },
   ];
@@ -279,7 +277,7 @@ export function SettingsMenu({ onOpen, onSave, onReset, onResetConfig, config, o
 
                       {config.rightHandEnabled && (
                         <div className="grid gap-3 pl-2">
-                          {['index', 'middle', 'ring', 'pinky'].map((finger) => (
+                          {['index', 'middle'].map((finger) => (
                             <div key={finger} className="flex items-center justify-between gap-4">
                               <Label className="text-xs capitalize w-24">Thumb + {finger}</Label>
                               <Select 
